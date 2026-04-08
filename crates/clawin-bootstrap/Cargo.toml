@@ -1,0 +1,15 @@
+[package]
+name = "clawin-bootstrap"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+clawin-config = { path = "../clawin-config" }
+clawin-core = { path = "../clawin-core" }
+clawin-platform = { path = "../clawin-platform" }
+tracing.workspace = true

@@ -1,0 +1,56 @@
+name: Docs Baseline
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  docs-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify governance baseline files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required_files=(
+            "README.md"
+            "AGENTS.md"
+            "CLAUDE.md"
+            ".gitignore"
+            "docs/foundation/project-charter.md"
+            "docs/parity/parity-matrix.md"
+            "docs/adr/README.md"
+            "docs/adr/ADR-0001-workspace-and-crate-boundaries.md"
+            "docs/adr/ADR-0002-runtime-and-state-model.md"
+            "docs/adr/ADR-0003-tui-technology-direction.md"
+            "docs/adr/ADR-0004-platform-abstraction-boundary.md"
+            "docs/adr/ADR-0005-config-persistence-and-migration.md"
+            "docs/adr/ADR-0006-feature-gating-strategy.md"
+            "docs/standards/rust-engineering.md"
+            "docs/standards/testing-and-parity.md"
+            "docs/standards/change-control.md"
+            "docs/plans/master-roadmap.md"
+            "docs/status/parity-status.md"
+            "docs/status/risk-register.md"
+          )
+
+          for file in "${required_files[@]}"; do
+            test -f "$file"
+          done
+
+      - name: Verify governance vocabulary anchors
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          grep -q "Claude Code \`2.1.88\`" docs/foundation/project-charter.md
+          grep -q "Spec Ready" docs/parity/parity-matrix.md
+          grep -q "Accepted Difference" docs/standards/change-control.md
+          grep -q "DIFF-2026-001" docs/adr/ADR-0005-config-persistence-and-migration.md

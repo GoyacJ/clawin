@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Clawin 项目宪章
+    url: https://github.com/GoyacJ/clawin/blob/main/docs/foundation/project-charter.md
+    about: 在提交问题或需求前，先确认范围、命名和验收原则。
+  - name: Clawin 对标矩阵
+    url: https://github.com/GoyacJ/clawin/blob/main/docs/parity/parity-matrix.md
+    about: 查看对应子系统是否已经存在条目、状态和验收方式。
+  - name: Clawin ADR 索引
+    url: https://github.com/GoyacJ/clawin/blob/main/docs/adr/README.md
+    about: 涉及架构或行为口径变化时，先检查已有 ADR。
