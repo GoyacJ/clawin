@@ -1,8 +1,10 @@
 #![forbid(unsafe_code)]
 
-//! Platform abstraction traits and placeholder implementations for Phase 1.
+//! Platform abstraction traits and baseline implementations for Clawin.
 
 use std::collections::BTreeMap;
+use std::io::IsTerminal;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 const PROJECT_DIRECTORY_NAME: &str = ".clawin";
@@ -34,6 +36,12 @@ pub trait TerminalCapabilities {
 
 /// Path normalization and naming policy abstraction.
 pub trait PathPolicy {
+    /// Resolve the user home directory used for Clawin global storage.
+    fn home_dir(&self) -> Option<PathBuf>;
+
+    /// Normalize a path for use as a stable config key.
+    fn normalize_for_config_key(&self, path: &Path) -> String;
+
     /// Return the reserved project metadata directory name.
     fn project_directory_name(&self) -> &'static str;
 
@@ -104,11 +112,52 @@ impl TerminalCapabilities for StaticTerminalCapabilities {
     }
 }
 
-/// Fixed Clawin naming policy for project metadata.
+/// Runtime-detected terminal capabilities for the current process.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SystemTerminalCapabilities {
+    interactive: bool,
+    color: bool,
+}
+
+impl SystemTerminalCapabilities {
+    /// Snapshot the terminal capabilities from the running process.
+    pub fn detect() -> Self {
+        let interactive = std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
+        let color = interactive
+            && std::env::var_os("NO_COLOR").is_none()
+            && std::env::var("TERM")
+                .map(|term| term != "dumb")
+                .unwrap_or(true);
+
+        Self { interactive, color }
+    }
+}
+
+impl TerminalCapabilities for SystemTerminalCapabilities {
+    fn is_interactive(&self) -> bool {
+        self.interactive
+    }
+
+    fn supports_color(&self) -> bool {
+        self.color
+    }
+}
+
+/// Fixed Clawin naming policy for project metadata and path normalization.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ClawinPathPolicy;
 
 impl PathPolicy for ClawinPathPolicy {
+    fn home_dir(&self) -> Option<PathBuf> {
+        std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .map(PathBuf::from)
+    }
+
+    fn normalize_for_config_key(&self, path: &Path) -> String {
+        path.to_string_lossy().replace('\\', "/")
+    }
+
     fn project_directory_name(&self) -> &'static str {
         PROJECT_DIRECTORY_NAME
     }

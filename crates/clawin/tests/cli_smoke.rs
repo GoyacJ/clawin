@@ -1,17 +1,23 @@
+use std::fs;
+use std::path::PathBuf;
+
 use assert_cmd::Command;
+use serde_json::Value;
+use tempfile::TempDir;
 
 #[test]
-fn prints_help_with_no_arguments() {
-    let assert = Command::cargo_bin("clawin")
-        .expect("binary should exist")
-        .assert()
-        .success();
+fn enters_bootstrap_flow_with_no_arguments() {
+    let harness = CliHarness::new();
+    let assert = harness.command().assert().success();
 
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).expect("stdout is utf-8");
 
-    assert!(stdout.contains("Usage: clawin"));
-    assert!(stdout.contains("Terminal coding agent rebuilt in Rust."));
-    assert!(!stdout.contains("Claude"));
+    assert!(stdout.contains("interactive session is not implemented yet"));
+    assert!(!stdout.contains("Usage: clawin"));
+
+    let config = harness.read_global_config();
+    assert_eq!(config["schema_version"], 1);
+    assert_eq!(config["num_startups"], 1);
 }
 
 #[test]
@@ -29,6 +35,18 @@ fn prints_version() {
 }
 
 #[test]
+fn prints_help_without_loading_config() {
+    let harness = CliHarness::new();
+    let assert = harness.command().arg("--help").assert().success();
+
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).expect("stdout is utf-8");
+
+    assert!(stdout.contains("Usage: clawin"));
+    assert!(stdout.contains("Terminal coding agent rebuilt in Rust."));
+    assert!(!harness.global_root().exists());
+}
+
+#[test]
 fn rejects_unknown_flags() {
     let assert = Command::cargo_bin("clawin")
         .expect("binary should exist")
@@ -39,4 +57,62 @@ fn rejects_unknown_flags() {
     let stderr = String::from_utf8(assert.get_output().stderr.clone()).expect("stderr is utf-8");
 
     assert!(stderr.contains("--bad-flag"));
+}
+
+#[test]
+fn fails_when_global_config_is_invalid() {
+    let harness = CliHarness::new();
+    fs::create_dir_all(harness.global_root()).expect("global root should exist");
+    fs::write(harness.global_config_file(), "{ invalid json")
+        .expect("invalid config should be written");
+
+    let assert = harness.command().assert().failure();
+    let stderr = String::from_utf8(assert.get_output().stderr.clone()).expect("stderr is utf-8");
+
+    assert!(stderr.contains("config.json"));
+    assert!(stderr.contains("parse"));
+}
+
+struct CliHarness {
+    _tempdir: TempDir,
+    home_dir: PathBuf,
+    project_dir: PathBuf,
+}
+
+impl CliHarness {
+    fn new() -> Self {
+        let tempdir = tempfile::tempdir().expect("tempdir should exist");
+        let home_dir = tempdir.path().join("home");
+        let project_dir = tempdir.path().join("workspace").join("app");
+
+        fs::create_dir_all(&home_dir).expect("home dir should exist");
+        fs::create_dir_all(&project_dir).expect("project dir should exist");
+
+        Self {
+            _tempdir: tempdir,
+            home_dir,
+            project_dir,
+        }
+    }
+
+    fn command(&self) -> Command {
+        let mut command = Command::cargo_bin("clawin").expect("binary should exist");
+        command.current_dir(&self.project_dir);
+        command.env("HOME", &self.home_dir);
+        command.env("USERPROFILE", &self.home_dir);
+        command
+    }
+
+    fn global_root(&self) -> PathBuf {
+        self.home_dir.join(".clawin")
+    }
+
+    fn global_config_file(&self) -> PathBuf {
+        self.global_root().join("config.json")
+    }
+
+    fn read_global_config(&self) -> Value {
+        let contents = fs::read_to_string(self.global_config_file()).expect("config should exist");
+        serde_json::from_str(&contents).expect("config should be valid json")
+    }
 }

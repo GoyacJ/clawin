@@ -1,6 +1,6 @@
 use clap::Parser;
 
-/// Top-level CLI surface for the Phase 1 bootstrap skeleton.
+/// Top-level CLI surface for the current Clawin bootstrap entrypoint.
 #[derive(Debug, Parser)]
 #[command(
     name = "clawin",

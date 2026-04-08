@@ -10,6 +10,11 @@ impl SessionId {
         Self(value.to_owned())
     }
 
+    /// Build a session identifier from an owned value.
+    pub fn from_owned(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
     /// Borrow the raw identifier string.
     pub fn as_str(&self) -> &str {
         &self.0

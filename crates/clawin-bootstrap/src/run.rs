@@ -1,12 +1,12 @@
 use std::ffi::OsString;
-use std::path::PathBuf;
 use std::process::ExitCode;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::Result;
-use clap::{CommandFactory, Parser, error::ErrorKind};
-use clawin_config::{ClawinPaths, StaticConfigStore};
+use anyhow::{Context, Result};
+use clap::{Parser, error::ErrorKind};
+use clawin_config::LoadedConfigSnapshot;
 use clawin_core::{RuntimeCapabilities, SessionId, SessionRuntime};
-use clawin_platform::{ClawinPathPolicy, StaticTerminalCapabilities, TerminalCapabilities};
+use clawin_platform::{ClawinPathPolicy, SystemTerminalCapabilities, TerminalCapabilities};
 use tracing::debug;
 
 use crate::Cli;
@@ -22,11 +22,7 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
 {
-    let args = args.into_iter().map(Into::into).collect::<Vec<_>>();
-
-    if args.len() <= 1 {
-        return print_help();
-    }
+    let args = normalize_args(args);
 
     match Cli::try_parse_from(args) {
         Ok(cli) => match dispatch(cli) {
@@ -41,19 +37,29 @@ where
 }
 
 fn dispatch(_cli: Cli) -> Result<ExitCode> {
-    let state = bootstrap_state()?;
+    let context = bootstrap_context()?;
 
-    debug!(session_id = %state.runtime.session_id(), "phase 1 bootstrap skeleton dispatched");
-    println!("clawin bootstrap skeleton is not implemented yet.");
+    debug!(
+        session_id = %context.runtime.session_id(),
+        project_key = context.config.project_key(),
+        "phase 2 bootstrap context assembled"
+    );
+    println!("clawin interactive session is not implemented yet.");
 
     Ok(ExitCode::SUCCESS)
 }
 
-fn print_help() -> ExitCode {
-    let mut command = Cli::command();
-    command.print_help().expect("help should render");
-    println!();
-    ExitCode::SUCCESS
+fn normalize_args<I, T>(args: I) -> Vec<OsString>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
+    let args = args.into_iter().map(Into::into).collect::<Vec<_>>();
+    if args.is_empty() {
+        vec![OsString::from("clawin")]
+    } else {
+        args
+    }
 }
 
 fn render_cli_error(error: clap::Error) -> ExitCode {
@@ -71,19 +77,21 @@ fn render_cli_error(error: clap::Error) -> ExitCode {
     exit_code
 }
 
-fn bootstrap_state() -> Result<BootstrapState> {
-    let project_root = std::env::current_dir()?;
-    let global_root = home_dir_fallback().join(".clawin");
-    let paths = ClawinPaths::new(global_root, project_root);
-    let config = StaticConfigStore::new(paths.clone(), 1);
-    let terminal = StaticTerminalCapabilities::new(true, true);
+fn bootstrap_context() -> Result<BootstrapContext> {
+    let original_cwd =
+        std::env::current_dir().context("failed to read current working directory")?;
+    let terminal = SystemTerminalCapabilities::detect();
     let path_policy = ClawinPathPolicy;
+    let config = clawin_config::load_startup_config(original_cwd.clone(), &path_policy)
+        .context("failed to load startup config")?;
     let runtime = SessionRuntime::new(
-        SessionId::from_static("phase-1-bootstrap"),
+        generate_session_id(),
         RuntimeCapabilities::new(terminal.is_interactive(), false),
+        original_cwd,
+        config.paths().project_root().to_path_buf(),
     );
 
-    Ok(BootstrapState {
+    Ok(BootstrapContext {
         runtime,
         config,
         terminal,
@@ -91,20 +99,22 @@ fn bootstrap_state() -> Result<BootstrapState> {
     })
 }
 
-fn home_dir_fallback() -> PathBuf {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
+fn generate_session_id() -> SessionId {
+    let millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+
+    SessionId::from_owned(format!("bootstrap-{millis}-{}", std::process::id()))
 }
 
-struct BootstrapState {
+struct BootstrapContext {
     #[allow(dead_code)]
     runtime: SessionRuntime,
     #[allow(dead_code)]
-    config: StaticConfigStore,
+    config: LoadedConfigSnapshot,
     #[allow(dead_code)]
-    terminal: StaticTerminalCapabilities,
+    terminal: SystemTerminalCapabilities,
     #[allow(dead_code)]
     path_policy: ClawinPathPolicy,
 }

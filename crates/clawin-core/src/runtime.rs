@@ -1,3 +1,4 @@
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use crate::SessionId;
@@ -35,15 +36,24 @@ pub struct SessionRuntime {
     session_id: SessionId,
     launched_at: SystemTime,
     capabilities: RuntimeCapabilities,
+    original_cwd: PathBuf,
+    project_root: PathBuf,
 }
 
 impl SessionRuntime {
     /// Create a new runtime container for the current process/session.
-    pub fn new(session_id: SessionId, capabilities: RuntimeCapabilities) -> Self {
+    pub fn new(
+        session_id: SessionId,
+        capabilities: RuntimeCapabilities,
+        original_cwd: PathBuf,
+        project_root: PathBuf,
+    ) -> Self {
         Self {
             session_id,
             launched_at: SystemTime::now(),
             capabilities,
+            original_cwd,
+            project_root,
         }
     }
 
@@ -60,5 +70,15 @@ impl SessionRuntime {
     /// Read the currently known runtime capabilities.
     pub fn capabilities(&self) -> RuntimeCapabilities {
         self.capabilities
+    }
+
+    /// Borrow the cwd that Clawin started from.
+    pub fn original_cwd(&self) -> &Path {
+        &self.original_cwd
+    }
+
+    /// Borrow the resolved project root for the session.
+    pub fn project_root(&self) -> &Path {
+        &self.project_root
     }
 }

@@ -1,18 +1,18 @@
 # 对标进度总览
 
 - 更新时间: 2026-04-08
-- 当前阶段: `M1`
+- 当前阶段: `M2`
 
 ## 总体状态
 
-文档与治理基线、Cargo workspace、最小 `clawin` 可执行骨架和基础 CI 已建立。仓库已进入 `M1`，并具备继续推进 `bootstrap/config` 首轮迁移的装配基础。
+文档与治理基线、Cargo workspace、最小 `clawin` 可执行骨架和基础 CI 已建立，`bootstrap/config` 首轮闭环也已落地。仓库已进入 `M2`，具备继续推进 commands/tools 基础设施的稳定装配面。
 
 ## 子系统状态
 
 | 子系统 | 当前状态 | 下一步 |
 | --- | --- | --- |
-| Bootstrap / Entrypoint | `In Progress` | 以最小 CLI stub 为基线继续扩展启动链路与配置装配 |
-| Config / Settings / Persistence | `Spec Ready` | 作为首轮试运行对象，先冻结 schema 与 migration |
+| Bootstrap / Entrypoint | `Parity Pending` | 在现有 startup/config 装配之上补充 commands/tools 入口与更多行为 fixture |
+| Config / Settings / Persistence | `Parity Pending` | 在现有 schema/migration 闭环之上继续补 settings 合并语义与更多对标样本 |
 | Commands | `Spec Ready` | 设计 command registry |
 | Tools | `Spec Ready` | 设计 tool trait、权限和注册表 |
 | Conversation Engine | `Spec Ready` | 在 commands/tools 骨架后推进 |
@@ -24,9 +24,9 @@
 
 ## 当前重点
 
-- 固化 `M1` workspace、crate 边界和基础 CI
-- 推进 `bootstrap/config` 首轮能力实现
-- 补充 CLI help / startup 行为样本与 fixture
+- 固化 `M2` 的 bootstrap/config 闭环
+- 推进 commands/tools 首轮基础设施
+- 继续补充 CLI startup/config 行为样本与 fixture
 
 ## 当前差异
 

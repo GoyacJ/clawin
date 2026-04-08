@@ -19,8 +19,8 @@
 
 | 子系统 | 上游 TS 入口 | Rust 归属 | 状态 | 验收测试 | 差异说明 | 风险 |
 | --- | --- | --- | --- | --- | --- | --- |
-| Bootstrap / Entrypoint | `src/main.tsx`, `src/setup.ts` | `clawin-bootstrap` | `In Progress` | 启动流程、CLI 参数、交互/非交互入口、session 初始化冒烟 | 暂无 | 启动链路涉及平台差异与早期 side effects |
-| Config / Settings / Persistence | `src/utils/config.ts`, `src/utils/settings/*`, `src/bootstrap/state.ts` | `clawin-config` + `clawin-bootstrap` | `Spec Ready` | 全局配置、项目配置、状态持久化、路径归一化、迁移测试 | `DIFF-2026-001` | 配置结构复杂，路径和迁移最容易出兼容问题 |
+| Bootstrap / Entrypoint | `src/main.tsx`, `src/setup.ts` | `clawin-bootstrap` | `Parity Pending` | `clawin --help/--version` fast-path、无参数进入 bootstrap、`SessionRuntime` 首轮装配、invalid-config 失败路径、三平台 startup smoke | 暂无 | 启动链路后续仍会接入 commands/tools，需防止 side effects 过早渗透 |
+| Config / Settings / Persistence | `src/utils/config.ts`, `src/utils/settings/*`, `src/bootstrap/state.ts` | `clawin-config` + `clawin-bootstrap` | `Parity Pending` | `project_key` 归一化、`~/.clawin/config.json` 初始化、`~/.clawin/settings.json`/`.clawin/settings.json` 发现、schema `1`、migration 备份、invalid settings/config 失败路径 | `DIFF-2026-001` | settings 合并语义和更多上游字段仍待继续细化 |
 | Commands | `src/commands.ts`, `src/commands/*` | `clawin-commands` | `Spec Ready` | slash command 路由、参数解析、命令输出 golden fixture | 暂无 | 命令分 prompt 型与本地型，接口设计容易漂移 |
 | Tools | `src/tools.ts`, `src/Tool.ts`, `src/tools/*`, `src/services/tools/*` | `clawin-tools` | `Spec Ready` | tool schema、权限、执行编排、tool result 配对、错误路径 | 暂无 | 工具是行为对标核心，高耦合 permissions 和 engine |
 | Conversation Engine | `src/QueryEngine.ts`, `src/query.ts`, `src/query/*` | `clawin-engine` | `Spec Ready` | turn loop、streaming、compact、continuation、budget、interrupt | 暂无 | 会话状态、流式事件和中断处理复杂度最高 |

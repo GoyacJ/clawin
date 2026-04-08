@@ -2,11 +2,11 @@
 
 Clawin 是一个基于 Rust 重构的终端代理式编码产品，V1 目标是对标 Claude Code `v2.1.88` 的公开包行为，同时以 Rust 的工程化方式重建其核心架构、运行时和平台适配层。
 
-当前仓库还处在治理与基线搭建阶段。实现工作开始前，所有工程决策、对标范围、差异处理和验收规则都以仓库内文档为准，不依赖口头说明。
+当前仓库已经完成治理基线、workspace 骨架和 `bootstrap/config` 首轮闭环。所有工程决策、对标范围、差异处理和验收规则都以仓库内文档为准，不依赖口头说明。
 
 ## 当前阶段
 
-- 阶段: Phase 1 workspace 与基础 CI 骨架已建立，正在进入 `bootstrap/config` 首轮迁移
+- 阶段: 已进入 `M2`，`bootstrap/config` 首轮闭环已完成，下一步推进 commands/tools 基础设施
 - 上游参考语料: [docs/claude-code-sourcemap-main/README.md](/Users/goya/Repo/claude/clawin/docs/claude-code-sourcemap-main/README.md)
 - 对标目标: Claude Code `2.1.88` 公开包行为
 - 产品身份: `clawin`
