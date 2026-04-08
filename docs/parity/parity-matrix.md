@@ -19,11 +19,11 @@
 
 | 子系统 | 上游 TS 入口 | Rust 归属 | 状态 | 验收测试 | 差异说明 | 风险 |
 | --- | --- | --- | --- | --- | --- | --- |
-| Bootstrap / Entrypoint | `src/main.tsx`, `src/setup.ts` | `clawin-bootstrap` | `Parity Pending` | `clawin --help/--version` fast-path、无参数进入 bootstrap、`SessionRuntime` 首轮装配、invalid-config 失败路径、三平台 startup smoke | 暂无 | 启动链路后续仍会接入 commands/tools，需防止 side effects 过早渗透 |
+| Bootstrap / Entrypoint | `src/main.tsx`, `src/setup.ts` | `clawin-bootstrap` | `Parity Pending` | `clawin --help/--version` fast-path、无参数进入 bootstrap、`SessionRuntime` 首轮装配、commands/tools/engine 最小装配、invalid-config 失败路径、三平台 startup smoke | 暂无 | 启动链路后续仍会接入更完整 engine，需防止 side effects 过早渗透 |
 | Config / Settings / Persistence | `src/utils/config.ts`, `src/utils/settings/*`, `src/bootstrap/state.ts` | `clawin-config` + `clawin-bootstrap` | `Parity Pending` | `project_key` 归一化、`~/.clawin/config.json` 初始化、`~/.clawin/settings.json`/`.clawin/settings.json` 发现、schema `1`、migration 备份、invalid settings/config 失败路径 | `DIFF-2026-001` | settings 合并语义和更多上游字段仍待继续细化 |
-| Commands | `src/commands.ts`, `src/commands/*` | `clawin-commands` | `Spec Ready` | slash command 路由、参数解析、命令输出 golden fixture | 暂无 | 命令分 prompt 型与本地型，接口设计容易漂移 |
-| Tools | `src/tools.ts`, `src/Tool.ts`, `src/tools/*`, `src/services/tools/*` | `clawin-tools` | `Spec Ready` | tool schema、权限、执行编排、tool result 配对、错误路径 | 暂无 | 工具是行为对标核心，高耦合 permissions 和 engine |
-| Conversation Engine | `src/QueryEngine.ts`, `src/query.ts`, `src/query/*` | `clawin-engine` | `Spec Ready` | turn loop、streaming、compact、continuation、budget、interrupt | 暂无 | 会话状态、流式事件和中断处理复杂度最高 |
+| Commands | `src/commands.ts`, `src/commands/*` | `clawin-commands` | `Parity Pending` | command registry、name/alias 解析、lazy load、`/help` reference command、unknown-command 失败路径、golden fixture | `DIFF-2026-001` | 命令分 prompt 型与本地型，当前仅完成最小 local 路径 |
+| Tools | `src/tools.ts`, `src/Tool.ts`, `src/tools/*`, `src/services/tools/*` | `clawin-tools` | `Parity Pending` | tool schema、permission decision、`file_read` reference tool、tool result golden fixture、invalid-input/unsupported-file 失败路径 | `DIFF-2026-001` | 工具是行为对标核心，高耦合 permissions 和 engine，当前仅覆盖最小 read-only 样本 |
+| Conversation Engine | `src/QueryEngine.ts`, `src/query.ts`, `src/query/*` | `clawin-engine` | `In Progress` | minimal session runner、`/help` 闭环、`file_read` 闭环、session events、后续再扩展 turn loop/streaming | `DIFF-2026-001` | 当前只完成最小闭环，离完整会话状态机仍有明显距离 |
 | TUI / REPL / Screens | `src/ink/*`, `src/components/*`, `src/screens/*`, `src/keybindings/*` | `clawin-ui` | `Spec Ready` | REPL 交互、键盘事件、屏幕切换、文本渲染 snapshot | 允许 Rust TUI 技术栈重写实现，行为不变 | 三平台终端能力和渲染细节差异大 |
 | MCP | `src/services/mcp/*`, `src/tools/MCPTool/*`, `src/tools/ListMcpResourcesTool/*`, `src/tools/ReadMcpResourceTool/*` | `clawin-integrations` + `clawin-tools` | `Spec Ready` | stdio/http/sse 连接、tool/resource 暴露、认证/失效恢复 | 暂无 | 协议、认证、超时和错误恢复都需强测试 |
 | Skills / Plugins | `src/skills/*`, `src/plugins/*`, `src/utils/markdownConfigLoader.ts` | `clawin-integrations` | `Spec Ready` | 目录发现、加载顺序、约束注入、内置资源测试 | V1 仅覆盖公开包可达能力 | 需要同时处理命名空间迁移和加载规则 |
@@ -40,6 +40,16 @@
 4. 有哪些失败路径
 5. 如何做对标验证
 6. 是否存在差异 ID
+
+## Phase 3 二级验收注记
+
+| 条目 | 当前状态 | Rust 归属 | 验收说明 | 差异 |
+| --- | --- | --- | --- | --- |
+| command registry / alias / lazy load | `Parity Pending` | `clawin-commands` | `/help` 与 `/?` 解析到同一 canonical command，执行时才加载 handler，unknown command 稳定失败 | `DIFF-2026-001` |
+| `/help` reference command | `Parity Pending` | `clawin-commands` | 输出稳定文本 fixture，用于锁定 command 执行结果协议 | `DIFF-2026-001` |
+| tool schema / validation / permission decision | `Parity Pending` | `clawin-tools` | `file_path` 缺失稳定报错，project root 外路径触发 `ask` 并在非交互模式稳定拒绝 | `DIFF-2026-001` |
+| `file_read` reference tool | `Parity Pending` | `clawin-tools` | 仅支持 UTF-8 文本读取，支持 `offset/limit`，PDF/图片/二进制稳定返回不支持错误 | `DIFF-2026-001` |
+| minimal engine session runner | `In Progress` | `clawin-engine` | `/help` 和 `file_read` 能产出稳定 session event 序列，完整 turn loop 仍待后续阶段 | `DIFF-2026-001` |
 
 ## 差异记录约束
 

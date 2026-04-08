@@ -186,9 +186,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "clawin-commands",
  "clawin-config",
  "clawin-core",
+ "clawin-engine",
  "clawin-platform",
+ "clawin-tools",
  "tracing",
 ]
 
@@ -215,6 +218,7 @@ dependencies = [
 name = "clawin-core"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "thiserror",
  "tokio",
  "tracing",
@@ -224,7 +228,11 @@ dependencies = [
 name = "clawin-engine"
 version = "0.1.0"
 dependencies = [
+ "clawin-commands",
  "clawin-core",
+ "clawin-tools",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -243,6 +251,9 @@ name = "clawin-tools"
 version = "0.1.0"
 dependencies = [
  "clawin-core",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

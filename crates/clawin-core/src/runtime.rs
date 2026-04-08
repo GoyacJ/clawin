@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use crate::SessionId;
+use crate::{PermissionMode, SessionId};
 
 /// Minimal process/session-scoped capabilities exposed during Phase 1.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -38,6 +38,7 @@ pub struct SessionRuntime {
     capabilities: RuntimeCapabilities,
     original_cwd: PathBuf,
     project_root: PathBuf,
+    permission_mode: PermissionMode,
 }
 
 impl SessionRuntime {
@@ -47,6 +48,7 @@ impl SessionRuntime {
         capabilities: RuntimeCapabilities,
         original_cwd: PathBuf,
         project_root: PathBuf,
+        permission_mode: PermissionMode,
     ) -> Self {
         Self {
             session_id,
@@ -54,6 +56,7 @@ impl SessionRuntime {
             capabilities,
             original_cwd,
             project_root,
+            permission_mode,
         }
     }
 
@@ -80,5 +83,10 @@ impl SessionRuntime {
     /// Borrow the resolved project root for the session.
     pub fn project_root(&self) -> &Path {
         &self.project_root
+    }
+
+    /// Borrow the current permission mode.
+    pub fn permission_mode(&self) -> PermissionMode {
+        self.permission_mode
     }
 }

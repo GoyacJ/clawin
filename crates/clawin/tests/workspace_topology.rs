@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 
 use cargo_metadata::{Metadata, MetadataCommand, Node, Package, PackageId};
 
+// Phase 3 topology remains anchored on DIFF-2026-001 and Clawin-owned crate boundaries.
+
 const EXPECTED_MEMBERS: &[&str] = &[
     "clawin",
     "clawin-bootstrap",
@@ -40,6 +42,36 @@ fn forbidden_workspace_edges_are_absent() {
     let nodes = node_map(&metadata);
 
     assert!(depends_on(&metadata, &nodes, "clawin", "clawin-bootstrap"));
+    assert!(depends_on(
+        &metadata,
+        &nodes,
+        "clawin-bootstrap",
+        "clawin-commands"
+    ));
+    assert!(depends_on(
+        &metadata,
+        &nodes,
+        "clawin-bootstrap",
+        "clawin-engine"
+    ));
+    assert!(depends_on(
+        &metadata,
+        &nodes,
+        "clawin-bootstrap",
+        "clawin-tools"
+    ));
+    assert!(depends_on(
+        &metadata,
+        &nodes,
+        "clawin-engine",
+        "clawin-commands"
+    ));
+    assert!(depends_on(
+        &metadata,
+        &nodes,
+        "clawin-engine",
+        "clawin-tools"
+    ));
     assert!(!depends_on(&metadata, &nodes, "clawin", "clawin-ui"));
     assert!(!depends_on(&metadata, &nodes, "clawin-engine", "clawin-ui"));
     assert!(!depends_on(&metadata, &nodes, "clawin-ui", "clawin-config"));

@@ -7,4 +7,10 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+clawin-commands = { path = "../clawin-commands" }
 clawin-core = { path = "../clawin-core" }
+clawin-tools = { path = "../clawin-tools" }
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true

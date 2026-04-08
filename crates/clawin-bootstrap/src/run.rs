@@ -4,9 +4,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use clap::{Parser, error::ErrorKind};
+use clawin_commands::{CommandRegistry, builtin_command_registry};
 use clawin_config::LoadedConfigSnapshot;
-use clawin_core::{RuntimeCapabilities, SessionId, SessionRuntime};
+use clawin_core::{PermissionMode, RuntimeCapabilities, SessionId, SessionRuntime};
+use clawin_engine::ConversationEngine;
 use clawin_platform::{ClawinPathPolicy, SystemTerminalCapabilities, TerminalCapabilities};
+use clawin_tools::{ToolRegistry, builtin_tool_registry};
 use tracing::debug;
 
 use crate::Cli;
@@ -37,12 +40,15 @@ where
 }
 
 fn dispatch(_cli: Cli) -> Result<ExitCode> {
-    let context = bootstrap_context()?;
+    let session = bootstrap_session()?;
 
     debug!(
-        session_id = %context.runtime.session_id(),
-        project_key = context.config.project_key(),
-        "phase 2 bootstrap context assembled"
+        session_id = %session.context.runtime.session_id(),
+        project_key = session.context.config.project_key(),
+        command_count = session.commands.command_specs().count(),
+        tool_count = session.tools.tool_specs().count(),
+        engine_session_id = %session.engine.session_id(),
+        "phase 3 bootstrap session assembled"
     );
     println!("clawin interactive session is not implemented yet.");
 
@@ -89,6 +95,7 @@ fn bootstrap_context() -> Result<BootstrapContext> {
         RuntimeCapabilities::new(terminal.is_interactive(), false),
         original_cwd,
         config.paths().project_root().to_path_buf(),
+        PermissionMode::Default,
     );
 
     Ok(BootstrapContext {
@@ -108,6 +115,20 @@ fn generate_session_id() -> SessionId {
     SessionId::from_owned(format!("bootstrap-{millis}-{}", std::process::id()))
 }
 
+fn bootstrap_session() -> Result<BootstrapSession> {
+    let context = bootstrap_context()?;
+    let commands = builtin_command_registry();
+    let tools = builtin_tool_registry();
+    let engine = ConversationEngine::new(context.runtime.session_id().clone());
+
+    Ok(BootstrapSession {
+        context,
+        commands,
+        tools,
+        engine,
+    })
+}
+
 struct BootstrapContext {
     #[allow(dead_code)]
     runtime: SessionRuntime,
@@ -117,4 +138,11 @@ struct BootstrapContext {
     terminal: SystemTerminalCapabilities,
     #[allow(dead_code)]
     path_policy: ClawinPathPolicy,
+}
+
+struct BootstrapSession {
+    context: BootstrapContext,
+    commands: CommandRegistry,
+    tools: ToolRegistry,
+    engine: ConversationEngine,
 }

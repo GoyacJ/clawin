@@ -8,3 +8,9 @@ repository.workspace = true
 
 [dependencies]
 clawin-core = { path = "../clawin-core" }
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true
