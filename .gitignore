@@ -1,0 +1,20 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs / temp files
+*.log
+*.tmp
+*.swp
+
+# Rust build artifacts
+target/
+
+# Local upstream research corpus
+docs/claude-code-sourcemap-main/

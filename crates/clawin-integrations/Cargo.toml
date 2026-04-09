@@ -1,0 +1,19 @@
+[package]
+name = "clawin-integrations"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+clawin-config = { path = "../clawin-config" }
+clawin-core = { path = "../clawin-core" }
+clawin-platform = { path = "../clawin-platform" }
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

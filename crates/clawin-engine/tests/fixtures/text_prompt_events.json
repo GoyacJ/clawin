@@ -1,0 +1,30 @@
+[
+  {
+    "type": "session_started",
+    "session_id": "engine-test"
+  },
+  {
+    "type": "turn_started",
+    "turn_id": 1
+  },
+  {
+    "type": "assistant_text_delta",
+    "turn_id": 1,
+    "delta": "Alpha"
+  },
+  {
+    "type": "assistant_message_completed",
+    "turn_id": 1,
+    "content": "Alpha"
+  },
+  {
+    "type": "turn_finished",
+    "turn_id": 1,
+    "stop_reason": "completed"
+  },
+  {
+    "type": "session_finished",
+    "session_id": "engine-test",
+    "stop_reason": "completed"
+  }
+]

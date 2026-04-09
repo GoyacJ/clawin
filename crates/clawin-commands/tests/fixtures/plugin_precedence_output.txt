@@ -1,0 +1,5 @@
+Plugins:
+- broken-plugin scope=user status=failed commands=0 skills=0 mcp_servers=0 error=invalid plugin manifest: missing or invalid `name`
+- demo-plugin scope=user status=ignored commands=0 skills=0 mcp_servers=0 error=overridden by higher-precedence project plugin
+- demo-plugin scope=project status=loaded commands=1 skills=0 mcp_servers=0
+

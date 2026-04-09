@@ -1,0 +1,2 @@
+Available commands:
+/help - Show help and available commands

@@ -1,0 +1,17 @@
+[package]
+name = "clawin-commands"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+clawin-core = { path = "../clawin-core" }
+clawin-integrations = { path = "../clawin-integrations" }
+
+[dev-dependencies]
+clawin-config = { path = "../clawin-config" }
+clawin-platform = { path = "../clawin-platform" }
+serde_json.workspace = true
+tempfile.workspace = true

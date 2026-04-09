@@ -1,0 +1,66 @@
+name: Rust CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  rust-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+
+      - name: Cargo fmt
+        run: cargo fmt --check
+
+      - name: Cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Cargo test
+        run: cargo test --workspace
+
+  rust-build-matrix:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo build
+        run: cargo build --workspace
+
+      - name: Smoke - cli_smoke
+        run: cargo test -p clawin --test cli_smoke
+
+      - name: Smoke - session_store
+        run: cargo test -p clawin-config --test session_store
+
+      - name: Smoke - resume_session
+        run: cargo test -p clawin-bootstrap --test resume_session
+
+      - name: Smoke - remote_control
+        run: cargo test -p clawin-bootstrap --test remote_control
+
+      - name: Smoke - repl
+        run: cargo test -p clawin-ui --test repl
+
+      - name: Smoke - bridge
+        run: cargo test -p clawin-integrations --test bridge

@@ -1,0 +1,8 @@
+Remote control bridge: connected
+mode=standalone
+source=standalone
+name=demo
+environment_id=env-1
+bridge_session_id=bridge-session-1
+local_session_id=bootstrap-remote-control
+transcript_path=<transcript-path>

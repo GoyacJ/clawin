@@ -1,0 +1,3 @@
+Loaded skills:
+- Code Review (/code-review) source=project description=Review staged code carefully
+- Release Audit (/demo-plugin:release-audit) source=plugin(demo-plugin) description=Audit the release state

@@ -1,0 +1,6 @@
+{"type":"session_header","schema_version":1,"session_id":"fixture-session","launch_cwd":"/repo","canonical_project_root":"/repo","active_project_root":"/repo"}
+{"type":"unknown_entry","ignored":true}
+{"type":"last_prompt","content":"inspect worktree"}
+{"type":"message","message":{"type":"user","content":"inspect worktree"}}
+{"type":"message","message":{"type":"assistant","content":"worktree restored"}}
+{"type":"worktree_state","state":{"canonical_project_root":"/repo","worktree_path":"/repo/.clawin/worktrees/feature-a","branch":"worktree-feature-a","session_owned":true}}

@@ -1,0 +1,6 @@
+{
+  "type": "error",
+  "code": "permission_denied",
+  "message": "permission prompt not implemented yet for paths outside the project root",
+  "permission_behavior": "ask"
+}

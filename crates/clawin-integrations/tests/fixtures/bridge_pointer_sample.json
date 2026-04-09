@@ -1,0 +1,7 @@
+{
+  "bridge_session_id": "bridge-session-1",
+  "environment_id": "env-1",
+  "source": "standalone",
+  "local_session_id": "bridge-pointer-sample",
+  "transcript_path": "<transcript-path>"
+}
