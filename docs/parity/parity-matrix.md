@@ -35,7 +35,8 @@
 
 Phase 8E 起，`M8` 的发布门禁以 [release-checklist.md](/Users/goya/Repo/claude/clawin/docs/status/release-checklist.md) 为汇总真源。  
 在 release checklist 显式收口前，一级子系统即使局部证据增强，也不自动升为 `Parity Verified`。
-当前 release gate 已归档一轮本地 macOS fixed smoke 全通过结果；Linux/Windows 结果仍待 CI 归档，因此一级子系统状态继续保持 `Parity Pending`。
+当前 release gate 已归档一轮本地 macOS fixed smoke 全通过结果；但当前远端只跟踪 `origin/main`，且 `origin/main` 尚无 `.github/workflows/rust-ci.yml`，所以 Linux/Windows 还没有可归档的 fixed-smoke run，一级子系统状态继续保持 `Parity Pending`。
+`Skills / Plugins`、`Worktree / Session / Resume`、`Structured IO / Headless` 与 `Remote Control / Bridge` 的首批正式复核已经完成，但都因缺三平台 release archive 未被升级。
 
 | 子系统 | 当前结论 | 当前证据 | Phase 8 必补 | `M8` 后扩展项 |
 | --- | --- | --- | --- | --- |

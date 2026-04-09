@@ -7,7 +7,7 @@
 ## 总体状态
 
 文档与治理基线、Cargo workspace、`bootstrap/config`、`commands/tools/engine`、`TUI / REPL`、`MCP / skills / plugins`、`worktree / session / resume`、`structured IO / headless` 与 `remote control / bridge` 的最小主链路闭环均已落地，仓库当前具备 `M7` 所需的关键运行时能力。  
-但按照项目宪章、对标矩阵与测试规范重新对照 `docs/claude-code-sourcemap-main/restored-src/src/` 后，当前证据仍不足以把仓库正式切到 `M8 / Phase 8 complete`：一级子系统仍全部是 `Parity Pending`，固定 smoke 组虽然已在本地 macOS 跑通，但 Linux/Windows 证据尚未收口，且发布检查表仍未全部完成。  
+但按照项目宪章、对标矩阵与测试规范重新对照 `docs/claude-code-sourcemap-main/restored-src/src/` 后，当前证据仍不足以把仓库正式切到 `M8 / Phase 8 complete`：一级子系统仍全部是 `Parity Pending`，固定 smoke 组虽然已在本地 macOS 跑通，但当前远端只跟踪 `origin/main` 且尚无 `rust-ci.yml`，因此 Linux/Windows release archive 仍不存在，发布检查表也尚未全部完成。  
 
 本轮 sourcemap 复核的正式结论见 [sourcemap-audit.md](/Users/goya/Repo/claude/clawin/docs/status/sourcemap-audit.md)。
 当前 `M8` 门禁真源见 [release-checklist.md](/Users/goya/Repo/claude/clawin/docs/status/release-checklist.md)。
@@ -32,8 +32,8 @@
 
 - 固化 `M7` 已实现的最小闭环，不再把“最小实现”直接表述为“已完成对标”
 - `Phase 8E` 当前固定为 release gate hardening，不再开新功能阶段
-- 固定 smoke 组已在本地 macOS 完成一轮可追溯归档；Linux 与 Windows 仍待 CI run 结果收口
-- 以 [release-checklist.md](/Users/goya/Repo/claude/clawin/docs/status/release-checklist.md) 与 [sourcemap-audit.md](/Users/goya/Repo/claude/clawin/docs/status/sourcemap-audit.md) 为基线，逐一级子系统形成正式发布判定
+- 固定 smoke 组已在本地 macOS 完成一轮可追溯归档；当前远端 release baseline 尚无 Linux/Windows fixed-smoke run，因此三平台归档继续阻塞 `M8`
+- 已完成 `Skills / Plugins`、`Worktree / Session / Resume`、`Structured IO / Headless`、`Remote Control / Bridge` 的首批正式发布复核，但因缺 Linux/Windows archive 仍全部保持 `Parity Pending`
 - 在 release checklist 全部收口前，仓库继续保持 `M7`
 
 ## 当前差异

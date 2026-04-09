@@ -10,7 +10,7 @@
 当前仓库已经完成 `Phase 1` 到 `Phase 7` 的最小主链路闭环，并为所有一级子系统建立了上游入口映射、Rust 归属、集成测试与基础 CI。但这些证据目前仍不足以把仓库正式判定为 `M8 / Phase 8 complete`：
 
 - 一级子系统仍全部停留在 `Parity Pending`，尚未形成 `Parity Verified` 所需的完整证据包。
-- `rust-ci.yml` 已升级为 Linux/macOS/Windows 固定 smoke matrix，且 2026-04-09 本地 macOS 已跑通全部 6 个固定 smoke；但 Linux/Windows 结果仍未形成可追溯 release archive。
+- `rust-ci.yml` 已升级为 Linux/macOS/Windows 固定 smoke matrix，且 2026-04-09 本地 macOS 已跑通全部 6 个固定 smoke；但当前远端只跟踪 `origin/main`，且 `origin/main` 尚无 `.github/workflows/rust-ci.yml`，因此 Linux/Windows 结果并非“待补录”，而是“当前 release baseline 尚无可追溯 CI run 可归档”。
 - [release-checklist.md](/Users/goya/Repo/claude/clawin/docs/status/release-checklist.md) 已建立并成为 `M8` 门禁真源，但当前仍处于 `Not Ready for M8`。
 - 多个子系统当前是“V1 最小闭环已达成”的状态，而不是“上游公开能力已充分核验”的状态。
 
@@ -52,14 +52,27 @@
 在当前审计结论下，以下事项仍阻止仓库切换到 `M8`：
 
 1. 所有一级子系统仍停留在 `Parity Pending`，没有一个被正式判定为 `Parity Verified`。
-2. 三平台证据目前只完成了本地 macOS fixed smoke 归档；Linux/Windows 结果仍未写回 release gate 证据。
+2. 三平台证据目前只完成了本地 macOS fixed smoke 归档；当前远端 release baseline 尚无 Linux/Windows fixed-smoke run，因此也就没有结果可写回 release gate。
 3. 发布检查表虽已建立，但仍有 smoke matrix 与一级子系统正式判定两项总门禁未收口。
 4. 多个一级子系统虽然已有测试与 fixture 基线，但仍缺 release-level sourcemap 摘录、失败路径说明或平台结论，不能直接升为 `Parity Verified`。
 
+## Phase 8E 首批正式判定
+
+本批首先对最接近升级的四个一级子系统做了 release-level 正式复核：
+
+| 子系统 | 当前结论 | 已确认的 release-level 证据 | 未满足条件 |
+| --- | --- | --- | --- |
+| Skills / Plugins | `Parity Pending` | `src/skills/loadSkillsDir.ts`、`src/plugins/*` 的来源映射已写入审计；`crates/clawin-integrations/tests/skills_plugins.rs`、`crates/clawin-commands/tests/skills_plugins.rs`、`crates/clawin-bootstrap/tests/skills_plugins_bootstrap.rs` 与 `skills_normalized_output.txt`、`skill_command_display_output.txt`、`plugin_precedence_output.txt` 已覆盖黄金路径、失败路径和公共输出 | 当前 release baseline 缺 Linux/Windows archive，不能形成三平台正式结论 |
+| Worktree / Session / Resume | `Parity Pending` | `src/utils/worktree.ts`、`src/utils/sessionStorage.ts`、`src/utils/conversationRecovery.ts` 的来源映射已写入审计；`crates/clawin-config/tests/session_store.rs`、`crates/clawin-bootstrap/tests/resume_session.rs`、`crates/clawin-commands/tests/resume.rs` 与 session/worktree fixtures 已覆盖 transcript 真源、resume failure、restore runtime 与 worktree lifecycle | 当前 release baseline 缺 Linux/Windows 路径结论与 smoke archive，不能形成三平台正式结论 |
+| Structured IO / Headless | `Parity Pending` | `src/cli/structuredIO.ts`、`src/cli/print.ts` 的来源映射已写入审计；`crates/clawin/tests/cli_smoke.rs`、`crates/clawin-bootstrap/src/print.rs` 内测试与 headless fixtures 已覆盖 `--print`、stream-json、permission、busy、interrupt 与 resume-in-print | 当前 release baseline 缺 Linux/Windows smoke archive，不能形成三平台正式结论 |
+| Remote Control / Bridge | `Parity Pending` | `src/remote/*`、`src/bridge/*` 的来源映射已写入审计；`crates/clawin-bootstrap/tests/remote_control.rs`、`crates/clawin-integrations/tests/bridge.rs`、`crates/clawin-ui/tests/repl.rs` 与 bridge fixtures 已覆盖 standalone/REPL attach、pointer、busy、interrupt、permission 与 reconnect/status | 当前 release baseline 缺 Linux/Windows smoke archive，不能形成三平台正式结论 |
+
+这意味着首批正式判定已经完成，但当前并没有任何一个一级子系统满足升级到 `Parity Verified` 的必要条件。
+
 ## Phase 8E 当前判定
 
-- 当前一级子系统仍全部维持 `Parity Pending`，没有条目因为局部 fixture 基线而自动升到 `Parity Verified`。
-- 当前本地质量门禁已具备 release baseline，固定 smoke 组也已在本地 macOS 跑通；但 Linux/Windows 结果仍待 CI matrix 归档。
+- 当前一级子系统仍全部维持 `Parity Pending`，没有条目因为局部 fixture 基线而自动升到 `Parity Verified`；首批四个高优先级子系统也已完成正式复核，但全部继续保持原状态。
+- 当前本地质量门禁已具备 release baseline，固定 smoke 组也已在本地 macOS 跑通；但 Linux/Windows 结果仍无法归档，因为当前 remote baseline 尚无对应 workflow run。
 - `M8` 是否可切换，统一由 [release-checklist.md](/Users/goya/Repo/claude/clawin/docs/status/release-checklist.md) 收口判断，而不是由单个 phase 的实现完成度决定。
 
 ## Phase 8 必须补齐
