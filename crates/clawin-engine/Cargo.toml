@@ -12,5 +12,10 @@ clawin-core = { path = "../clawin-core" }
 clawin-tools = { path = "../clawin-tools" }
 
 [dev-dependencies]
+clawin-config = { path = "../clawin-config" }
+clawin-integrations = { path = "../clawin-integrations" }
+clawin-platform = { path = "../clawin-platform" }
+serde.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+tokio.workspace = true

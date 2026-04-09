@@ -14,6 +14,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
+mod session_store;
+
 /// Clawin global namespace directory name.
 pub const GLOBAL_NAMESPACE_DIR_NAME: &str = ".clawin";
 
@@ -32,6 +34,9 @@ pub const SETTINGS_FILE_NAME: &str = "settings.json";
 /// Backup directory name used for migration write-ahead copies.
 pub const BACKUPS_DIRECTORY_NAME: &str = "backups";
 
+/// Session transcript namespace directory.
+pub const PROJECTS_DIRECTORY_NAME: &str = "projects";
+
 /// Current schema version for all persisted Phase 2 documents.
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
@@ -47,6 +52,7 @@ pub struct ClawinPaths {
     project_directory: PathBuf,
     project_manifest: PathBuf,
     backups_dir: PathBuf,
+    projects_root: PathBuf,
 }
 
 impl ClawinPaths {
@@ -72,6 +78,7 @@ impl ClawinPaths {
             project_directory,
             project_manifest: project_root.join(path_policy.project_manifest_name()),
             backups_dir: global_root.join(BACKUPS_DIRECTORY_NAME),
+            projects_root: global_root.join(PROJECTS_DIRECTORY_NAME),
             project_root,
         })
     }
@@ -119,6 +126,11 @@ impl ClawinPaths {
     /// Borrow the migration backups directory.
     pub fn backups_dir(&self) -> &Path {
         &self.backups_dir
+    }
+
+    /// Borrow the root directory containing persisted session transcripts.
+    pub fn projects_root(&self) -> &Path {
+        &self.projects_root
     }
 }
 
@@ -545,6 +557,8 @@ fn canonicalize_path(path: &Path) -> Result<PathBuf, ConfigError> {
         message: error.to_string(),
     })
 }
+
+pub use session_store::{JsonlSessionStore, SESSION_SCHEMA_VERSION};
 
 fn resolve_project_root(original_cwd: &Path) -> Result<PathBuf, ConfigError> {
     let git_root = find_git_root(original_cwd)?;

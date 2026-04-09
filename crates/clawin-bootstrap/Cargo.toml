@@ -13,6 +13,13 @@ clawin-commands = { path = "../clawin-commands" }
 clawin-config = { path = "../clawin-config" }
 clawin-core = { path = "../clawin-core" }
 clawin-engine = { path = "../clawin-engine" }
+clawin-integrations = { path = "../clawin-integrations" }
 clawin-platform = { path = "../clawin-platform" }
 clawin-tools = { path = "../clawin-tools" }
+clawin-ui = { path = "../clawin-ui" }
+serde_json.workspace = true
+tokio.workspace = true
 tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

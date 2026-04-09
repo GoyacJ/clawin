@@ -8,9 +8,13 @@ repository.workspace = true
 
 [dependencies]
 clawin-core = { path = "../clawin-core" }
+clawin-integrations = { path = "../clawin-integrations" }
 serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
+clawin-config = { path = "../clawin-config" }
+clawin-platform = { path = "../clawin-platform" }
 serde_json.workspace = true
 tempfile.workspace = true
+tokio.workspace = true

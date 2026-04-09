@@ -1,0 +1,23 @@
+[
+  {
+    "type": "compact_summary",
+    "content": "user: first\nassistant: one",
+    "replaced_message_count": 2
+  },
+  {
+    "type": "user",
+    "content": "second"
+  },
+  {
+    "type": "assistant",
+    "content": "two"
+  },
+  {
+    "type": "user",
+    "content": "third"
+  },
+  {
+    "type": "assistant",
+    "content": "three"
+  }
+]

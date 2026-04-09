@@ -7,4 +7,15 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+clawin-commands = { path = "../clawin-commands" }
 clawin-core = { path = "../clawin-core" }
+clawin-engine = { path = "../clawin-engine" }
+clawin-platform = { path = "../clawin-platform" }
+clawin-tools = { path = "../clawin-tools" }
+ratatui.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true

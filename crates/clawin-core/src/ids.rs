@@ -1,7 +1,9 @@
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 /// Stable identifier for a process/session scope.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct SessionId(String);
 
 impl SessionId {
@@ -28,13 +30,18 @@ impl fmt::Display for SessionId {
 }
 
 /// Stable identifier for a conversation inside a session.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct ConversationId(String);
 
 impl ConversationId {
     /// Build a conversation identifier from a static label.
     pub fn from_static(value: &'static str) -> Self {
         Self(value.to_owned())
+    }
+
+    /// Build a conversation identifier from an owned value.
+    pub fn from_owned(value: impl Into<String>) -> Self {
+        Self(value.into())
     }
 
     /// Borrow the raw identifier string.
@@ -50,7 +57,7 @@ impl fmt::Display for ConversationId {
 }
 
 /// Monotonic identifier for a single turn.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct TurnId(u64);
 
 impl TurnId {

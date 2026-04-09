@@ -1,0 +1,7 @@
+Skill `review-rust` loaded from project.
+Description: Project override review skill
+Allowed tools: file_read, list_mcp_resources
+Markdown:
+# Review Rust
+Review the Rust changes carefully.
+

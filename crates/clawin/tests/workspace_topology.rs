@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use cargo_metadata::{Metadata, MetadataCommand, Node, Package, PackageId};
+use cargo_metadata::{DependencyKind, Metadata, MetadataCommand, Node, Package, PackageId};
 
-// Phase 3 topology remains anchored on DIFF-2026-001 and Clawin-owned crate boundaries.
+// Workspace topology remains anchored on DIFF-2026-001 and Clawin-owned crate boundaries through Phase 7.
 
 const EXPECTED_MEMBERS: &[&str] = &[
     "clawin",
@@ -63,6 +63,18 @@ fn forbidden_workspace_edges_are_absent() {
     assert!(depends_on(
         &metadata,
         &nodes,
+        "clawin-bootstrap",
+        "clawin-ui"
+    ));
+    assert!(depends_on(
+        &metadata,
+        &nodes,
+        "clawin-bootstrap",
+        "clawin-integrations"
+    ));
+    assert!(depends_on(
+        &metadata,
+        &nodes,
         "clawin-engine",
         "clawin-commands"
     ));
@@ -74,7 +86,19 @@ fn forbidden_workspace_edges_are_absent() {
     ));
     assert!(!depends_on(&metadata, &nodes, "clawin", "clawin-ui"));
     assert!(!depends_on(&metadata, &nodes, "clawin-engine", "clawin-ui"));
+    assert!(!depends_on(
+        &metadata,
+        &nodes,
+        "clawin-engine",
+        "clawin-integrations"
+    ));
     assert!(!depends_on(&metadata, &nodes, "clawin-ui", "clawin-config"));
+    assert!(!depends_on(
+        &metadata,
+        &nodes,
+        "clawin-ui",
+        "clawin-integrations"
+    ));
     assert!(!depends_on(
         &metadata,
         &nodes,
@@ -93,11 +117,35 @@ fn forbidden_workspace_edges_are_absent() {
         "clawin-tools",
         "clawin-commands"
     ));
+    assert!(depends_on(
+        &metadata,
+        &nodes,
+        "clawin-tools",
+        "clawin-integrations"
+    ));
+    assert!(depends_on(
+        &metadata,
+        &nodes,
+        "clawin-commands",
+        "clawin-integrations"
+    ));
     assert!(!depends_on(
         &metadata,
         &nodes,
         "clawin-commands",
         "clawin-tools"
+    ));
+    assert!(!depends_on(
+        &metadata,
+        &nodes,
+        "clawin-integrations",
+        "clawin-tools"
+    ));
+    assert!(!depends_on(
+        &metadata,
+        &nodes,
+        "clawin-integrations",
+        "clawin-commands"
     ));
 }
 
@@ -153,9 +201,12 @@ fn depends_on(
     let node = nodes.get(package_name).expect("node should exist");
 
     node.deps.iter().any(|dep| {
-        packages
-            .get(&dep.pkg)
-            .map(|pkg| pkg.name.as_ref() == dependency_name)
-            .unwrap_or(false)
+        dep.dep_kinds
+            .iter()
+            .any(|kind| kind.kind == DependencyKind::Normal)
+            && packages
+                .get(&dep.pkg)
+                .map(|pkg| pkg.name.as_ref() == dependency_name)
+                .unwrap_or(false)
     })
 }

@@ -55,6 +55,20 @@ pub enum ClawinError {
         /// A machine-readable explanation of the failure.
         message: String,
     },
+
+    /// Returned when a model driver fails to produce a valid stream.
+    #[error("model driver failed: {message}")]
+    ModelDriver {
+        /// A machine-readable explanation of the failure.
+        message: String,
+    },
+
+    /// Returned when the engine receives an invalid internal event sequence.
+    #[error("engine protocol failure: {message}")]
+    EngineProtocol {
+        /// A machine-readable explanation of the violation.
+        message: String,
+    },
 }
 
 /// Shared result alias for domain-layer operations.
