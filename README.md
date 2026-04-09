@@ -7,7 +7,7 @@ Clawin 是一个基于 Rust 重构的终端代理式编码产品，V1 目标是�
 ## 当前阶段
 
 - 阶段: `M7 / Phase 8E release gate hardening in progress`
-- 当前结论: `Phase 7` 的最小闭环已落地，固定 smoke 组已完成一轮本地 macOS 归档，但 Linux/Windows 结果与一级子系统正式发布判定仍阻止仓库切到 `M8 / Phase 8 complete`
+- 当前结论: `Phase 7` 的最小闭环已落地；GitHub Actions run [24181239142](https://github.com/GoyacJ/clawin/actions/runs/24181239142) 已完成 Linux/macOS/Windows 固定 smoke 归档，且 `Skills / Plugins`、`Worktree / Session / Resume`、`Structured IO / Headless`、`Remote Control / Bridge` 已升级为 `Parity Verified`，但其余一级子系统正式判定仍阻止仓库切到 `M8 / Phase 8 complete`
 - 复核基线: [docs/status/sourcemap-audit.md](/Users/goya/Repo/claude/clawin/docs/status/sourcemap-audit.md) 与 [docs/status/parity-status.md](/Users/goya/Repo/claude/clawin/docs/status/parity-status.md)
 - 发布门禁真源: [docs/status/release-checklist.md](/Users/goya/Repo/claude/clawin/docs/status/release-checklist.md)
 - 上游参考语料: [docs/claude-code-sourcemap-main/README.md](/Users/goya/Repo/claude/clawin/docs/claude-code-sourcemap-main/README.md)

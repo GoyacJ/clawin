@@ -109,10 +109,10 @@
 当前 `Phase 8E` 的执行批次固定为：
 
 - 冻结阶段性 hardening 基线，不再引入新的功能面
-- 先归档固定 smoke 组的本地 macOS 结果，并继续等待 Linux/Windows CI 结果进入 release gate
-- 当前远端仅有 `origin/main`，且 `origin/main` 尚无 `rust-ci.yml`；在包含 fixed smoke matrix 的基线 push/merge 到远端前，Linux/Windows release archive 无法生成
+- GitHub Actions run [24181239142](https://github.com/GoyacJ/clawin/actions/runs/24181239142) 已归档 Linux/macOS/Windows 固定 smoke matrix 全通过结果
 - 以发布检查表和三平台 smoke matrix 收口 `M8` 门禁
-- 逐一级子系统给出正式发布结论：`Parity Verified`、`Parity Pending` 或 `Accepted Difference`；首批四个高优先级子系统已完成正式复核，但在远端三平台证据缺位前继续保持 `Parity Pending`
+- 逐一级子系统给出正式发布结论：`Parity Verified`、`Parity Pending` 或 `Accepted Difference`；首批四个高优先级子系统已完成正式复核并升级为 `Parity Verified`
+- 当前剩余工作集中在 `Bootstrap / Entrypoint`、`Config / Settings / Persistence`、`Commands`、`Tools`、`Conversation Engine`、`TUI / REPL / Screens`、`MCP` 七个一级子系统的正式判定
 - 任一门禁未收口前继续保持 `M7`
 
 ## 里程碑
