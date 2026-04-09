@@ -439,6 +439,19 @@ fn deduplicates_same_repo_session_scope_after_path_normalization() {
     assert_eq!(previews[0].session_id.as_str(), "session-win");
 }
 
+#[test]
+fn test_path_policy_sanitizes_windows_verbatim_paths_for_session_dirs() {
+    let policy = TestPathPolicy::new(PathBuf::from("/tmp/home"));
+    let sanitized = policy.sanitize_for_session_dir(Path::new(
+        r"\\?\C:\Users\runneradmin\AppData\Local\Temp\.tmp6AalnT\workspace\app",
+    ));
+
+    assert_eq!(
+        sanitized,
+        "c-users-runneradmin-appdata-local-temp-tmp6aalnt-workspace-app"
+    );
+}
+
 struct SessionHarness {
     _tempdir: TempDir,
     home_dir: PathBuf,
@@ -486,12 +499,6 @@ impl PathPolicy for TestPathPolicy {
 
     fn normalize_for_config_key(&self, path: &Path) -> String {
         path.to_string_lossy().replace('\\', "/")
-    }
-
-    fn sanitize_for_session_dir(&self, path: &Path) -> String {
-        path.to_string_lossy()
-            .replace(':', "")
-            .replace(['\\', '/'], "-")
     }
 
     fn project_directory_name(&self) -> &'static str {

@@ -3,6 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
@@ -20,9 +21,13 @@ use tempfile::TempDir;
 
 const TEST_MESSAGE_TIMEOUT: Duration = Duration::from_secs(2);
 const TEST_POLL_INTERVAL: Duration = Duration::from_millis(50);
+static REMOTE_CONTROL_TEST_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 #[test]
 fn standalone_remote_control_runs_help_command_over_fake_bridge() {
+    let _serial = REMOTE_CONTROL_TEST_LOCK
+        .lock()
+        .expect("remote_control test lock should be available");
     let harness = Harness::new();
     let session = bootstrap_session_from(
         harness.project_dir.clone(),
@@ -108,6 +113,9 @@ fn standalone_remote_control_runs_help_command_over_fake_bridge() {
 
 #[test]
 fn standalone_remote_control_permission_allow_sequence_matches_fixture() {
+    let _serial = REMOTE_CONTROL_TEST_LOCK
+        .lock()
+        .expect("remote_control test lock should be available");
     let harness = Harness::new();
     fs::write(
         harness
@@ -212,6 +220,9 @@ fn standalone_remote_control_permission_allow_sequence_matches_fixture() {
 
 #[test]
 fn standalone_remote_control_interrupt_emits_cancel_request_fixture() {
+    let _serial = REMOTE_CONTROL_TEST_LOCK
+        .lock()
+        .expect("remote_control test lock should be available");
     let harness = Harness::new();
     let session = bootstrap_session_from(
         harness.project_dir.clone(),
@@ -292,6 +303,9 @@ fn standalone_remote_control_interrupt_emits_cancel_request_fixture() {
 
 #[test]
 fn standalone_remote_control_emits_busy_error_for_concurrent_user_input() {
+    let _serial = REMOTE_CONTROL_TEST_LOCK
+        .lock()
+        .expect("remote_control test lock should be available");
     let harness = Harness::new();
     let session = bootstrap_session_from(
         harness.project_dir.clone(),
@@ -513,7 +527,10 @@ fn collect_until_control_request(
         }
     }
 
-    panic!("timed out waiting for control request");
+    panic!(
+        "timed out waiting for control request; observed messages: {}",
+        debug_messages(messages)
+    );
 }
 
 fn collect_until_result(
@@ -531,7 +548,10 @@ fn collect_until_result(
         }
     }
 
-    panic!("timed out waiting for result");
+    panic!(
+        "timed out waiting for result; observed messages: {}",
+        debug_messages(messages)
+    );
 }
 
 fn collect_until_turn_started(
@@ -554,7 +574,10 @@ fn collect_until_turn_started(
         }
     }
 
-    panic!("timed out waiting for turn_started");
+    panic!(
+        "timed out waiting for turn_started; observed messages: {}",
+        debug_messages(messages)
+    );
 }
 
 fn fixture_text(path: &str) -> String {
@@ -579,6 +602,11 @@ fn normalized_json_lines(messages: &[StructuredOutputMessage]) -> Vec<Value> {
             value
         })
         .collect()
+}
+
+fn debug_messages(messages: &[StructuredOutputMessage]) -> String {
+    let values = normalized_json_lines(messages);
+    serde_json::to_string(&values).expect("debug message snapshot should serialize")
 }
 
 fn normalize_json_value(value: &mut Value) {
