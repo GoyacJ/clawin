@@ -47,5 +47,20 @@ jobs:
       - name: Cargo build
         run: cargo build --workspace
 
-      - name: CLI smoke
-        run: cargo run -p clawin -- --help
+      - name: Smoke - cli_smoke
+        run: cargo test -p clawin --test cli_smoke
+
+      - name: Smoke - session_store
+        run: cargo test -p clawin-config --test session_store
+
+      - name: Smoke - resume_session
+        run: cargo test -p clawin-bootstrap --test resume_session
+
+      - name: Smoke - remote_control
+        run: cargo test -p clawin-bootstrap --test remote_control
+
+      - name: Smoke - repl
+        run: cargo test -p clawin-ui --test repl
+
+      - name: Smoke - bridge
+        run: cargo test -p clawin-integrations --test bridge

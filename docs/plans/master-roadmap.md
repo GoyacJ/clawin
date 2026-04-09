@@ -2,7 +2,7 @@
 
 - 状态: Active
 - 基线日期: 2026-04-09
-- 当前进度: `M7` / `Phase 8 in progress`
+- 当前进度: `M7` / `Phase 8E release gate hardening in progress`
 
 ## 总目标
 
@@ -105,6 +105,12 @@
 - 先以 `docs/claude-code-sourcemap-main/restored-src/src/` 重新对照现有一级子系统，确认哪些最小实现已经足以构成 V1 闭环，哪些仍只是样本实现
 - 在一级子系统没有形成 `Parity Verified` 或 `Accepted Difference` 证据前，仓库继续保持 `M7`
 - 只有在三平台验证证据、golden / smoke / failure-path 证据和发布检查表同时齐备后，才允许切换到 `M8`
+
+当前 `Phase 8E` 的执行批次固定为：
+
+- 冻结阶段性 hardening 基线，不再引入新的功能面
+- 以发布检查表和三平台 smoke matrix 收口 `M8` 门禁
+- 逐一级子系统给出正式发布结论：`Parity Verified`、`Parity Pending` 或 `Accepted Difference`
 
 ## 里程碑
 

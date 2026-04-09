@@ -2,14 +2,15 @@
 
 - 更新时间: 2026-04-09
 - 当前里程碑: `M7`
-- 当前执行阶段: `Phase 8D: Remote Control / Bridge parity hardening`
+- 当前执行阶段: `Phase 8E: Release Gate Hardening`
 
 ## 总体状态
 
 文档与治理基线、Cargo workspace、`bootstrap/config`、`commands/tools/engine`、`TUI / REPL`、`MCP / skills / plugins`、`worktree / session / resume`、`structured IO / headless` 与 `remote control / bridge` 的最小主链路闭环均已落地，仓库当前具备 `M7` 所需的关键运行时能力。  
-但按照项目宪章、对标矩阵与测试规范重新对照 `docs/claude-code-sourcemap-main/restored-src/src/` 后，当前证据仍不足以把仓库正式切到 `M8 / Phase 8 complete`：一级子系统仍全部是 `Parity Pending`，三平台证据尚未覆盖全部公开行为，且仓库内尚无发布检查表。  
+但按照项目宪章、对标矩阵与测试规范重新对照 `docs/claude-code-sourcemap-main/restored-src/src/` 后，当前证据仍不足以把仓库正式切到 `M8 / Phase 8 complete`：一级子系统仍全部是 `Parity Pending`，三平台证据尚未覆盖全部公开行为，且发布检查表仍未全部收口。  
 
 本轮 sourcemap 复核的正式结论见 [sourcemap-audit.md](/Users/goya/Repo/claude/clawin/docs/status/sourcemap-audit.md)。
+当前 `M8` 门禁真源见 [release-checklist.md](/Users/goya/Repo/claude/clawin/docs/status/release-checklist.md)。
 
 ## 子系统状态
 
@@ -30,11 +31,10 @@
 ## 当前重点
 
 - 固化 `M7` 已实现的最小闭环，不再把“最小实现”直接表述为“已完成对标”
-- `Phase 8C` 的 `Structured IO / Headless` 已形成新的 fixture 基线，当前切换到 `Phase 8D` 收口 `Remote Control / Bridge`
-- `Phase 8D` 当前优先批次固定 bridge 路径：补齐 pointer recovery、status 输出、busy/interrupt/permission mediation、reconnect 与 CLI failure path 的公共输出证据
-- `Skills / Plugins` 已进入新的 fixture 基线，下一步以 sourcemap 摘录、三平台结论和 `Parity Verified` 升级证据为主
-- 以 [sourcemap-audit.md](/Users/goya/Repo/claude/clawin/docs/status/sourcemap-audit.md) 为基线，逐子系统补齐 `Parity Verified` 所需证据
-- 新增发布检查表，并在 `status`、`roadmap`、`parity matrix` 与根入口文档之间收敛里程碑口径
+- `Phase 8E` 当前固定为 release gate hardening，不再开新功能阶段
+- 三平台 CI matrix 已升级到固定 smoke 组，当前等待 Linux/macOS/Windows 的可追溯结果
+- 以 [release-checklist.md](/Users/goya/Repo/claude/clawin/docs/status/release-checklist.md) 与 [sourcemap-audit.md](/Users/goya/Repo/claude/clawin/docs/status/sourcemap-audit.md) 为基线，逐一级子系统做正式发布判定
+- 在 release checklist 全部收口前，仓库继续保持 `M7`
 
 ## 当前差异
 

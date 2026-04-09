@@ -38,6 +38,8 @@ jobs:
             "docs/standards/change-control.md"
             "docs/plans/master-roadmap.md"
             "docs/status/parity-status.md"
+            "docs/status/sourcemap-audit.md"
+            "docs/status/release-checklist.md"
             "docs/status/risk-register.md"
           )
 
@@ -54,3 +56,4 @@ jobs:
           grep -q "Spec Ready" docs/parity/parity-matrix.md
           grep -q "Accepted Difference" docs/standards/change-control.md
           grep -q "DIFF-2026-001" docs/adr/ADR-0005-config-persistence-and-migration.md
+          grep -q "\`M8\`" docs/status/release-checklist.md

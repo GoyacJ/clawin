@@ -3,7 +3,7 @@
 - 更新时间: 2026-04-09
 - 上游基线: Claude Code `2.1.88`
 - 参考语料: `docs/claude-code-sourcemap-main/restored-src/src/`
-- 当前判定: `M7` / `Phase 8D in progress`
+- 当前判定: `M7` / `Phase 8E in progress`
 
 ## 审计结论
 
@@ -17,8 +17,9 @@
 因此，本轮审计后的正式结论是：
 
 - `当前里程碑` 继续保持 `M7`
-- `当前执行阶段` 调整为 `Phase 8D: Remote Control / Bridge parity hardening`
+- `当前执行阶段` 调整为 `Phase 8E: Release Gate Hardening`
 - `M8` 只在 parity hardening、平台证据和发布门禁补齐后才能切换
+- `docs/status/release-checklist.md` 是当前 `M8` 门禁的唯一汇总真源
 
 ## 审计方法
 
@@ -54,6 +55,12 @@
 2. 缺少覆盖所有一级子系统的三平台证据说明；现有 CI 只证明构建和 `--help` smoke。
 3. 缺少发布检查表，因此不能宣称“发布准备完成”。
 4. 根入口文档此前仍有阶段口径漂移，需要本轮审计一起收口。
+
+## Phase 8E 当前判定
+
+- 当前一级子系统仍全部维持 `Parity Pending`，没有条目因为局部 fixture 基线而自动升到 `Parity Verified`。
+- 当前本地质量门禁已具备 release baseline，但三平台 smoke 结果仍待 CI matrix 产出。
+- `M8` 是否可切换，统一由 [release-checklist.md](/Users/goya/Repo/claude/clawin/docs/status/release-checklist.md) 收口判断，而不是由单个 phase 的实现完成度决定。
 
 ## Phase 8 必须补齐
 
