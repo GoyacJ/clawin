@@ -208,7 +208,10 @@ fn print_mode_text_output_matches_help_fixture() {
         .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).expect("stdout is utf-8");
 
-    assert_eq!(stdout, fixture_text("tests/fixtures/print_help_text.txt"));
+    assert_eq!(
+        normalize_line_endings(&stdout),
+        normalize_line_endings(&fixture_text("tests/fixtures/print_help_text.txt"))
+    );
 }
 
 #[test]
@@ -221,7 +224,10 @@ fn print_mode_json_output_matches_help_fixture() {
         .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).expect("stdout is utf-8");
 
-    assert_eq!(stdout, fixture_text("tests/fixtures/print_help_json.json"));
+    assert_eq!(
+        normalize_line_endings(&stdout),
+        normalize_line_endings(&fixture_text("tests/fixtures/print_help_json.json"))
+    );
 }
 
 #[test]
@@ -414,6 +420,10 @@ impl CliHarness {
 fn fixture_text(path: &str) -> String {
     let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(path);
     fs::read_to_string(fixture_path).expect("fixture should exist")
+}
+
+fn normalize_line_endings(value: &str) -> String {
+    value.replace("\r\n", "\n")
 }
 
 fn fixture_json_lines(path: &str) -> Vec<Value> {

@@ -29,9 +29,10 @@ use clawin_platform::{
 use clawin_tools::ToolRegistry;
 use ratatui::Terminal;
 use ratatui::backend::{CrosstermBackend, TestBackend};
-use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::text::{Line, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::{TerminalOptions, Viewport};
 use tokio::sync::{mpsc as tokio_mpsc, oneshot};
 
 /// Fixed TUI renderer direction from ADR-0003.
@@ -1215,7 +1216,9 @@ fn draw_view(
     state: &ReplViewState,
 ) -> anyhow::Result<()> {
     let backend = CrosstermBackend::new(terminal_session.writer());
-    let mut terminal = Terminal::new(backend).context("failed to create crossterm backend")?;
+    let viewport = Viewport::Fixed(Rect::new(0, 0, state.size.width(), state.size.height()));
+    let mut terminal = Terminal::with_options(backend, TerminalOptions { viewport })
+        .context("failed to create crossterm backend")?;
     terminal
         .draw(|frame| render_repl(frame, state))
         .context("failed to draw crossterm frame")?;

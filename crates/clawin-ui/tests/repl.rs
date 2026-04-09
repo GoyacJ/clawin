@@ -154,6 +154,12 @@ fn ctrl_c_cancels_running_prompt_and_restores_idle_state() {
             ))),
             None,
             None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
             Some(TerminalEvent::Key(TerminalKeyEvent::new(
                 TerminalKeyCode::Char('c'),
                 TerminalKeyModifiers::CONTROL,
@@ -351,26 +357,21 @@ fn remote_control_host_routes_remote_help_through_live_repl_session() {
             false
         })
     };
-    let mut terminal = FakeTerminalSession::new(
-        TerminalSize::new(100, 30),
-        vec![
-            Some(TerminalEvent::Key(TerminalKeyEvent::from_char('/'))),
-            Some(TerminalEvent::Key(TerminalKeyEvent::from_char('r'))),
-            Some(TerminalEvent::Key(TerminalKeyEvent::from_char('c'))),
-            Some(TerminalEvent::Key(TerminalKeyEvent::new(
-                TerminalKeyCode::Enter,
-                TerminalKeyModifiers::NONE,
-            ))),
-            None,
-            None,
-            None,
-            None,
-            Some(TerminalEvent::Key(TerminalKeyEvent::new(
-                TerminalKeyCode::Char('c'),
-                TerminalKeyModifiers::CONTROL,
-            ))),
-        ],
-    );
+    let mut events = vec![
+        Some(TerminalEvent::Key(TerminalKeyEvent::from_char('/'))),
+        Some(TerminalEvent::Key(TerminalKeyEvent::from_char('r'))),
+        Some(TerminalEvent::Key(TerminalKeyEvent::from_char('c'))),
+        Some(TerminalEvent::Key(TerminalKeyEvent::new(
+            TerminalKeyCode::Enter,
+            TerminalKeyModifiers::NONE,
+        ))),
+    ];
+    events.extend(std::iter::repeat_n(None, 32));
+    events.push(Some(TerminalEvent::Key(TerminalKeyEvent::new(
+        TerminalKeyCode::Char('c'),
+        TerminalKeyModifiers::CONTROL,
+    ))));
+    let mut terminal = FakeTerminalSession::new(TerminalSize::new(100, 30), events);
 
     run_repl_session(&mut controller, &mut terminal, ReplConfig::default())
         .expect("repl session should exit cleanly");

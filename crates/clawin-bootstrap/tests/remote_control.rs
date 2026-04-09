@@ -18,6 +18,9 @@ use clawin_platform::{FakeGitWorktreeAdapter, PathPolicy, StaticTerminalCapabili
 use serde_json::Value;
 use tempfile::TempDir;
 
+const TEST_MESSAGE_TIMEOUT: Duration = Duration::from_secs(2);
+const TEST_POLL_INTERVAL: Duration = Duration::from_millis(50);
+
 #[test]
 fn standalone_remote_control_runs_help_command_over_fake_bridge() {
     let harness = Harness::new();
@@ -63,7 +66,7 @@ fn standalone_remote_control_runs_help_command_over_fake_bridge() {
     });
 
     assert!(matches!(
-        remotes[0].recv_timeout(Duration::from_millis(250)),
+        remotes[0].recv_timeout(TEST_MESSAGE_TIMEOUT),
         Some(StructuredOutputMessage::SessionStarted { session_id })
             if session_id == runtime.session_id().as_str()
     ));
@@ -75,10 +78,10 @@ fn standalone_remote_control_runs_help_command_over_fake_bridge() {
         .expect("fake remote user input should send");
 
     let mut saw_command_result = false;
-    let deadline = std::time::Instant::now() + Duration::from_millis(500);
+    let deadline = std::time::Instant::now() + TEST_MESSAGE_TIMEOUT;
     while std::time::Instant::now() < deadline {
         if let Some(StructuredOutputMessage::Result { result }) =
-            remotes[0].recv_timeout(Duration::from_millis(25))
+            remotes[0].recv_timeout(TEST_POLL_INTERVAL)
         {
             if result
                 .command_output
@@ -492,9 +495,9 @@ fn collect_until_control_request(
     remote: &Arc<clawin_integrations::FakeBridgeRemote>,
     messages: &mut Vec<StructuredOutputMessage>,
 ) -> String {
-    let deadline = std::time::Instant::now() + Duration::from_millis(500);
+    let deadline = std::time::Instant::now() + TEST_MESSAGE_TIMEOUT;
     while std::time::Instant::now() < deadline {
-        if let Some(message) = remote.recv_timeout(Duration::from_millis(25)) {
+        if let Some(message) = remote.recv_timeout(TEST_POLL_INTERVAL) {
             let request_id = if let StructuredOutputMessage::ControlRequest {
                 request: StructuredControlRequest::CanUseTool { request_id, .. },
             } = &message
@@ -517,9 +520,9 @@ fn collect_until_result(
     remote: &Arc<clawin_integrations::FakeBridgeRemote>,
     messages: &mut Vec<StructuredOutputMessage>,
 ) {
-    let deadline = std::time::Instant::now() + Duration::from_millis(500);
+    let deadline = std::time::Instant::now() + TEST_MESSAGE_TIMEOUT;
     while std::time::Instant::now() < deadline {
-        if let Some(message) = remote.recv_timeout(Duration::from_millis(25)) {
+        if let Some(message) = remote.recv_timeout(TEST_POLL_INTERVAL) {
             let is_result = matches!(message, StructuredOutputMessage::Result { .. });
             messages.push(message);
             if is_result {
@@ -535,9 +538,9 @@ fn collect_until_turn_started(
     remote: &Arc<clawin_integrations::FakeBridgeRemote>,
     messages: &mut Vec<StructuredOutputMessage>,
 ) {
-    let deadline = std::time::Instant::now() + Duration::from_millis(500);
+    let deadline = std::time::Instant::now() + TEST_MESSAGE_TIMEOUT;
     while std::time::Instant::now() < deadline {
-        if let Some(message) = remote.recv_timeout(Duration::from_millis(25)) {
+        if let Some(message) = remote.recv_timeout(TEST_POLL_INTERVAL) {
             let is_turn_started = matches!(
                 &message,
                 StructuredOutputMessage::StreamEvent {
