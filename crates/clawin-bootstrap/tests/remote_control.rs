@@ -180,7 +180,7 @@ fn standalone_remote_control_permission_allow_sequence_matches_fixture() {
         .expect("remote control runner should succeed")
     });
 
-    let mut messages = vec![wait_for_message(&remotes[0], Duration::from_millis(250))];
+    let mut messages = vec![wait_for_message(&remotes[0], TEST_MESSAGE_TIMEOUT)];
     remotes[0]
         .send(StructuredInputMessage::User {
             content: "read the secret".to_owned(),
@@ -264,7 +264,7 @@ fn standalone_remote_control_interrupt_emits_cancel_request_fixture() {
         .expect("remote control runner should succeed")
     });
 
-    let mut messages = vec![wait_for_message(&remotes[0], Duration::from_millis(250))];
+    let mut messages = vec![wait_for_message(&remotes[0], TEST_MESSAGE_TIMEOUT)];
     remotes[0]
         .send(StructuredInputMessage::User {
             content: "read the secret".to_owned(),
@@ -344,7 +344,7 @@ fn standalone_remote_control_emits_busy_error_for_concurrent_user_input() {
         .expect("remote control runner should succeed")
     });
 
-    let mut messages = vec![wait_for_message(&remotes[0], Duration::from_millis(250))];
+    let mut messages = vec![wait_for_message(&remotes[0], TEST_MESSAGE_TIMEOUT)];
     remotes[0]
         .send(StructuredInputMessage::User {
             content: "hello".to_owned(),
