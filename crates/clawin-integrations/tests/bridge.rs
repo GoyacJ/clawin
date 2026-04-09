@@ -15,6 +15,7 @@ use clawin_integrations::{
     BridgeManager, BridgePointerStore, FakeBridgeConnector, ReconnectPolicy,
 };
 use clawin_platform::{FakeGitWorktreeAdapter, PathPolicy};
+use serde_json::Value;
 use tempfile::TempDir;
 
 #[test]
@@ -123,10 +124,8 @@ fn bridge_pointer_file_matches_fixture() {
     let saved = fs::read_to_string(path).expect("saved bridge pointer should be readable");
 
     assert_eq!(
-        normalize_pointer_fixture(&saved, &transcript_path),
-        fixture_text("tests/fixtures/bridge_pointer_sample.json")
-            .trim_end_matches('\n')
-            .to_owned()
+        normalize_pointer_fixture(&saved),
+        fixture_json("tests/fixtures/bridge_pointer_sample.json")
     );
 }
 
@@ -411,6 +410,19 @@ fn fixture_text(path: &str) -> String {
     fs::read_to_string(fixture_path).expect("fixture should exist")
 }
 
-fn normalize_pointer_fixture(saved: &str, transcript_path: &std::path::Path) -> String {
-    saved.replace(&transcript_path.display().to_string(), "<transcript-path>")
+fn fixture_json(path: &str) -> Value {
+    serde_json::from_str(&fixture_text(path)).expect("fixture should be valid json")
+}
+
+fn normalize_pointer_fixture(saved: &str) -> Value {
+    let mut value: Value =
+        serde_json::from_str(saved).expect("saved bridge pointer should be json");
+    let object = value
+        .as_object_mut()
+        .expect("saved bridge pointer should be a JSON object");
+    object.insert(
+        "transcript_path".to_owned(),
+        Value::String("<transcript-path>".to_owned()),
+    );
+    value
 }
