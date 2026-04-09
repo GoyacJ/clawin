@@ -3,7 +3,7 @@
 - 更新时间: 2026-04-09
 - 上游基线: Claude Code `2.1.88`
 - 参考语料: `docs/claude-code-sourcemap-main/restored-src/src/`
-- 当前判定: `M7` / `Phase 8 in progress`
+- 当前判定: `M7` / `Phase 8D in progress`
 
 ## 审计结论
 
@@ -17,7 +17,7 @@
 因此，本轮审计后的正式结论是：
 
 - `当前里程碑` 继续保持 `M7`
-- `当前执行阶段` 调整为 `Phase 8 in progress`
+- `当前执行阶段` 调整为 `Phase 8D: Remote Control / Bridge parity hardening`
 - `M8` 只在 parity hardening、平台证据和发布门禁补齐后才能切换
 
 ## 审计方法
@@ -42,9 +42,9 @@
 | TUI / REPL / Screens | `src/ink/*`, `src/components/*`, `src/screens/*`, `src/keybindings/*` | no-arg REPL、slash command、cancel、resize、remote attach 已打通，但 UI 语义仍是精简版 | `crates/clawin-ui/tests/repl.rs`、`crates/clawin-platform/tests/terminal_session.rs` | 为当前 REPL 行为补齐 screenshot/snapshot 证据与三平台终端验证说明 | multi-line composer、history、scrollback、更多 screen |
 | MCP | `src/services/mcp/*`, `src/tools/MCPTool/*`, `src/tools/ListMcpResourcesTool/*`, `src/tools/ReadMcpResourceTool/*` | stdio MCP 的配置、连接、动态 tool/resource 路径已达成最小闭环 | `crates/clawin-integrations/tests/mcp_manager.rs`、`fake_stdio_process.rs`、`crates/clawin-bootstrap/tests/mcp_bootstrap.rs`、`crates/clawin-tools/tests/mcp.rs` | 为 `/mcp`、resource tools、动态 tool 命名补齐上游来源样本与三平台结论 | http/sse/ws/oauth、通知驱动刷新、更多 transport |
 | Skills / Plugins | `src/skills/loadSkillsDir.ts`, `src/skills/bundledSkills.ts`, `src/plugins/*`, `src/utils/markdownConfigLoader.ts` | skills/plugin runtime 加载和动态命令导出已可用，但仍是最小运行时闭环 | `crates/clawin-integrations/tests/skills_plugins.rs`、`crates/clawin-commands/tests/skills_plugins.rs`、`crates/clawin-bootstrap/tests/skills_plugins_bootstrap.rs`、`crates/clawin-commands/tests/fixtures/skills_normalized_output.txt`、`skill_command_display_output.txt`、`plugin_precedence_output.txt` | 固化显示名与 normalized token、precedence、plugin failure 的对标证据，并把 `/skills`、动态 skill command、`/plugin` 的公共文本输出锁进 fixture 基线，明确 V1 边界 | marketplace/install/update/uninstall、模板与样式生态 |
-| Worktree / Session / Resume | `src/utils/worktree.ts`, `src/utils/sessionStorage.ts`, `src/utils/conversationRecovery.ts`, `src/setup.ts` | JSONL transcript、resume、same-repo 搜索、session-owned worktree 已形成关键闭环，但恢复细节仍未完全 harden | `crates/clawin-config/tests/session_store.rs`、`crates/clawin-bootstrap/tests/resume_session.rs`、`crates/clawin-tools/tests/worktree.rs`、`crates/clawin-platform/tests/git_worktree.rs` | 为 transcript 真源、恢复失败路径、worktree 生命周期补齐 sourcemap 对照和平台说明 | 更完整 transcript 恢复、退出交互、tmux/remote 相关恢复 |
-| Structured IO / Headless | `src/cli/structuredIO.ts`, `src/cli/print.ts`, `src/entrypoints/sdk/controlSchemas.ts`, `src/entrypoints/sdk/coreSchemas.ts` | `--print` 的 text/json/stream-json 与 host-mediated permission 已打通，但仍缺系统化对标证据 | `crates/clawin/tests/cli_smoke.rs`、`crates/clawin-bootstrap/src/print.rs` 内单元测试 | 为 `--print` 输入输出协议补齐 golden、来源样本与三平台 smoke 结论 | 多客户端桥接与更丰富 host 集成 |
-| Remote Control / Bridge | `src/remote/*`, `src/bridge/*`, `src/cli/transports/*`, `src/commands/bridge/*` | standalone `remote-control`、REPL `/remote-control`、pointer 恢复与 reconnect 已形成最小闭环，但仍依赖 fake connector 证明主链路 | `crates/clawin-integrations/tests/bridge.rs`、`crates/clawin-bootstrap/tests/remote_control.rs`、`crates/clawin-ui/tests/repl.rs` | 为 bridge 协议、pointer 恢复、busy/cancel/reconnect 补齐 sourcemap 对照与可追溯 fixture | 真实 backend/auth、多会话 bridge、更多 transport |
+| Worktree / Session / Resume | `src/utils/worktree.ts`, `src/utils/sessionStorage.ts`, `src/utils/conversationRecovery.ts`, `src/setup.ts` | JSONL transcript、resume、same-repo 搜索、session-owned worktree 已形成关键闭环；单 session transcript 真源、restore failure path、worktree lifecycle result 和 restored active-worktree file access 已进入测试与 fixture 基线，但仍未完成 parity hardening | `crates/clawin-config/tests/session_store.rs`、`crates/clawin-config/tests/fixtures/*.jsonl`、`crates/clawin-commands/tests/resume.rs`、`crates/clawin-commands/tests/fixtures/resume_*.txt`、`crates/clawin-bootstrap/tests/resume_session.rs`、`crates/clawin-tools/tests/worktree.rs`、`crates/clawin-tools/tests/fixtures/*worktree*.json`、`crates/clawin-platform/tests/git_worktree.rs` | 保持当前 8B fixture 基线，继续补 transcript 真源、恢复失败路径、worktree 生命周期的 sourcemap 对照、三平台路径说明与 `Parity Verified` 升级证据 | 更完整 transcript 恢复、退出交互、tmux/remote 相关恢复 |
+| Structured IO / Headless | `src/cli/structuredIO.ts`, `src/cli/print.ts`, `src/entrypoints/sdk/controlSchemas.ts`, `src/entrypoints/sdk/coreSchemas.ts` | `--print` 的 text/json/stream-json、host-mediated permission、busy、interrupt 与 print-mode resume/continue 已打通，并已形成首轮 fixture 基线，但仍缺完整 parity hardening 证据包 | `crates/clawin/tests/cli_smoke.rs`、`crates/clawin/tests/fixtures/print_help_text.txt`、`print_help_json.json`、`print_help_stream_json.jsonl`、`crates/clawin-bootstrap/src/print.rs` 内单元测试、`crates/clawin-bootstrap/tests/fixtures/headless_stream_text_delta.jsonl`、`headless_permission_allow.jsonl`、`headless_permission_deny.jsonl`、`headless_permission_interrupt.jsonl` | 继续补 `--print` CLI surface、structured stdin/stdout 协议与三平台 smoke 结论，作为 8C 基线保留 | 多客户端桥接与更丰富 host 集成 |
+| Remote Control / Bridge | `src/remote/*`, `src/bridge/*`, `src/cli/transports/*`, `src/commands/bridge/*` | standalone `remote-control`、REPL `/remote-control`、pointer 恢复、status 输出与 reconnect 已形成最小闭环；pointer transcript anchor、permission allow/interrupt/cancel、busy、CLI unavailable/no-pointer 失败路径都已进入公共样本，但仍依赖 fake connector 证明主链路 | `crates/clawin-integrations/tests/bridge.rs`、`crates/clawin-integrations/tests/fixtures/bridge_pointer_sample.json`、`crates/clawin-bootstrap/tests/remote_control.rs`、`crates/clawin-bootstrap/tests/fixtures/remote_control_permission_allow.jsonl`、`remote_control_permission_interrupt.jsonl`、`remote_control_busy.jsonl`、`remote_control_status_connected.txt`、`remote_control_status_failed.txt`、`crates/clawin-commands/tests/remote_control.rs`、`crates/clawin-commands/tests/fixtures/remote_control_status_output.txt`、`crates/clawin/tests/cli_smoke.rs`、`crates/clawin-ui/tests/repl.rs` | 为 bridge sourcemap 对照、REPL attached 来源样本与三平台 smoke 结论补齐 `Parity Verified` 所需证据 | 真实 backend/auth、多会话 bridge、更多 transport |
 
 ## `M8` 阻塞项
 

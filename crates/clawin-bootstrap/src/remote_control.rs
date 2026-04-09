@@ -542,3 +542,67 @@ impl PermissionResolver for ChannelPermissionResolver {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+
+    use clawin_core::{BridgeState, BridgeStatusSnapshot, SessionId};
+
+    use super::render_remote_control_status;
+
+    #[test]
+    fn remote_control_status_renderer_matches_connected_fixture() {
+        let transcript_path = std::env::temp_dir().join("remote-control-status.jsonl");
+        let rendered = render_remote_control_status(&BridgeStatusSnapshot {
+            state: BridgeState::Connected,
+            mode: Some(clawin_core::BridgeMode::Standalone),
+            source: Some(clawin_core::BridgePointerSource::Standalone),
+            name: Some("demo".to_owned()),
+            bridge_session_id: Some("bridge-session-1".to_owned()),
+            environment_id: Some("env-1".to_owned()),
+            local_session_id: Some(SessionId::from_static("bootstrap-remote-control")),
+            transcript_path: Some(transcript_path.clone()),
+            last_error: None,
+        });
+
+        assert_eq!(
+            normalize_status_output(&rendered, &transcript_path),
+            fixture_text("tests/fixtures/remote_control_status_connected.txt")
+        );
+    }
+
+    #[test]
+    fn remote_control_status_renderer_matches_failed_fixture() {
+        let transcript_path = std::env::temp_dir().join("remote-control-status.jsonl");
+        let rendered = render_remote_control_status(&BridgeStatusSnapshot {
+            state: BridgeState::Failed,
+            mode: Some(clawin_core::BridgeMode::Standalone),
+            source: Some(clawin_core::BridgePointerSource::Standalone),
+            name: Some("demo".to_owned()),
+            bridge_session_id: Some("bridge-session-1".to_owned()),
+            environment_id: Some("env-1".to_owned()),
+            local_session_id: Some(SessionId::from_static("bootstrap-remote-control")),
+            transcript_path: Some(transcript_path.clone()),
+            last_error: Some("transport_disconnected".to_owned()),
+        });
+
+        assert_eq!(
+            normalize_status_output(&rendered, &transcript_path),
+            fixture_text("tests/fixtures/remote_control_status_failed.txt")
+        );
+    }
+
+    fn fixture_text(path: &str) -> String {
+        let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(path);
+        fs::read_to_string(fixture_path).expect("fixture should exist")
+    }
+
+    fn normalize_status_output(output: &str, transcript_path: &std::path::Path) -> String {
+        output.replace(
+            &format!("transcript_path={}", transcript_path.display()),
+            "transcript_path=<transcript-path>",
+        )
+    }
+}

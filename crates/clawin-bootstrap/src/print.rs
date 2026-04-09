@@ -646,22 +646,29 @@ impl PermissionResolver for StructuredPermissionResolver {
 #[cfg(test)]
 mod tests {
     use std::collections::VecDeque;
+    use std::fs;
+    use std::future::Future;
     use std::io::{Cursor, Write};
     use std::path::PathBuf;
     use std::sync::Arc;
+    use std::time::Duration;
 
+    use clawin_config::{JsonlSessionStore, load_startup_config};
     use clawin_core::{
-        ModelDriverFuture, ModelFinishReason, ModelRequest, ModelStreamEvent,
-        StructuredOutputMessage,
+        ConversationMessage, ModelDriverFuture, ModelFinishReason, ModelRequest, ModelStreamEvent,
+        PermissionMode, RuntimeCapabilities, SessionId, StructuredOutputMessage, ToolCall,
     };
-    use clawin_platform::{PathPolicy, StaticTerminalCapabilities};
+    use clawin_platform::{FakeGitWorktreeAdapter, PathPolicy, StaticTerminalCapabilities};
+    use serde_json::Value;
     use tempfile::TempDir;
 
     use super::*;
-    use crate::run::bootstrap_session_from;
+    use crate::run::{
+        SessionBootstrapMode, bootstrap_session_from, bootstrap_session_from_request,
+    };
 
     #[tokio::test]
-    async fn stream_json_mode_emits_session_started_events_and_result() {
+    async fn stream_json_mode_text_delta_output_matches_fixture() {
         let harness = Harness::new();
         let session = bootstrap_session_from(
             harness.project_dir.clone(),
@@ -693,22 +700,10 @@ mod tests {
         .expect("stream-json mode should succeed");
 
         assert_eq!(exit, ExitCode::SUCCESS);
-        let messages = stdout.messages();
-        assert!(matches!(
-            messages.first(),
-            Some(StructuredOutputMessage::SessionStarted { .. })
-        ));
-        assert!(messages.iter().any(|message| matches!(
-            message,
-            StructuredOutputMessage::StreamEvent {
-                event: EngineEvent::AssistantTextDelta { delta, .. }
-            } if delta == "stub reply"
-        )));
-        assert!(matches!(
-            messages.last(),
-            Some(StructuredOutputMessage::Result { result })
-                if result.outcome.final_assistant_message.as_deref() == Some("stub reply")
-        ));
+        assert_eq!(
+            normalized_json_lines(&stdout.output()),
+            fixture_json_lines("tests/fixtures/headless_stream_text_delta.jsonl")
+        );
     }
 
     #[tokio::test]
@@ -843,6 +838,408 @@ mod tests {
         )));
     }
 
+    #[tokio::test]
+    async fn structured_permission_resolver_rejects_ask_and_unknown_request_ids() {
+        let stdout = BufferWriter::shared();
+        let resolver = StructuredPermissionResolver::new(stdout.writer());
+        let call = ToolCall::new(
+            "toolu_1",
+            "file_read",
+            serde_json::json!({ "file_path": "../secret.txt" }),
+        );
+        let pending = resolver.resolve(
+            &call,
+            PermissionDecision::new(
+                PermissionBehavior::Ask,
+                Some("requested path is outside the project root".to_owned()),
+            ),
+        );
+        tokio::pin!(pending);
+
+        tokio::select! {
+            _ = &mut pending => panic!("permission future should wait for host response"),
+            _ = tokio::time::sleep(Duration::from_millis(10)) => {}
+        }
+
+        assert!(
+            !resolver
+                .apply_response(StructuredControlResponse::CanUseTool {
+                    request_id: "perm-missing".to_owned(),
+                    behavior: PermissionBehavior::Allow,
+                    message: None,
+                })
+                .expect("missing request id should not fail")
+        );
+
+        let error = resolver
+            .apply_response(StructuredControlResponse::CanUseTool {
+                request_id: "perm-1".to_owned(),
+                behavior: PermissionBehavior::Ask,
+                message: None,
+            })
+            .expect_err("ask response should be rejected");
+        assert!(matches!(
+            error,
+            PrintModeError::Runtime(message)
+                if message.to_string().contains("must resolve to allow or deny")
+        ));
+
+        resolver
+            .cancel_all("cleanup", false)
+            .expect("cleanup should cancel pending request");
+        let decision = pending.await.expect("pending future should resolve");
+        assert_eq!(decision.behavior, PermissionBehavior::Deny);
+    }
+
+    #[tokio::test]
+    async fn text_mode_continue_restores_transcript_before_model_submit() {
+        let harness = Harness::new();
+        let policy = TestPathPolicy {
+            home_dir: harness.home_dir.clone(),
+        };
+        seed_session(&harness, &policy, "print-restore");
+
+        let session = bootstrap_session_from_request(
+            harness.project_dir.clone(),
+            StaticTerminalCapabilities::new(false, false),
+            policy,
+            SessionBootstrapMode::Continue,
+        )
+        .expect("bootstrap continue should restore session");
+        let driver = Arc::new(ScriptedModelDriver::new(vec![Ok(vec![
+            ModelStreamEvent::TextDelta {
+                delta: "restored reply".to_owned(),
+            },
+            ModelStreamEvent::AssistantMessageFinished,
+            ModelStreamEvent::ModelFinished {
+                finish_reason: ModelFinishReason::Completed,
+            },
+        ])]));
+        let stdout = BufferWriter::shared();
+        let stderr = BufferWriter::shared();
+
+        let exit = run_text_mode(
+            session,
+            Arc::clone(&driver) as Arc<dyn ModelDriver>,
+            PrintOptions {
+                input_format: PrintInputFormat::Text,
+                output_format: PrintOutputFormat::Text,
+                verbose: false,
+                prompt: Some("continue work".to_owned()),
+            },
+            Box::new(Cursor::new(Vec::<u8>::new())),
+            true,
+            stdout.writer(),
+            stderr.writer(),
+        )
+        .await
+        .expect("text mode should succeed");
+
+        assert_eq!(exit, ExitCode::SUCCESS);
+        assert_eq!(stdout.output(), "restored reply\n");
+        let requests = driver.requests();
+        assert_eq!(requests.len(), 1);
+        assert!(requests[0].transcript.iter().any(|message| matches!(
+            message,
+            ConversationMessage::User { content } if content == "hello"
+        )));
+        assert!(requests[0].transcript.iter().any(|message| matches!(
+            message,
+            ConversationMessage::Assistant { content } if content == "world"
+        )));
+        assert!(requests[0].transcript.iter().any(|message| matches!(
+            message,
+            ConversationMessage::User { content } if content == "continue work"
+        )));
+    }
+
+    #[tokio::test]
+    async fn stream_json_mode_emits_busy_error_for_concurrent_user_input() {
+        let harness = Harness::new();
+        let session = bootstrap_session_from(
+            harness.project_dir.clone(),
+            StaticTerminalCapabilities::new(false, false),
+            TestPathPolicy {
+                home_dir: harness.home_dir.clone(),
+            },
+        )
+        .expect("bootstrap session should assemble");
+        let driver = Arc::new(DelayedModelDriver::new(
+            Duration::from_millis(50),
+            vec![
+                ModelStreamEvent::TextDelta {
+                    delta: "slow reply".to_owned(),
+                },
+                ModelStreamEvent::AssistantMessageFinished,
+                ModelStreamEvent::ModelFinished {
+                    finish_reason: ModelFinishReason::Completed,
+                },
+            ],
+        ));
+        let stdout = BufferWriter::shared();
+
+        let exit = run_stream_json_mode(
+            session,
+            driver,
+            Box::new(Cursor::new(
+                b"{\"type\":\"user\",\"content\":\"hello\"}\n{\"type\":\"user\",\"content\":\"again\"}\n"
+                    .to_vec(),
+            )),
+            stdout.writer(),
+        )
+        .await
+        .expect("stream-json mode should succeed");
+
+        assert_eq!(exit, ExitCode::SUCCESS);
+        let messages = stdout.messages();
+        assert!(messages.iter().any(|message| matches!(
+            message,
+            StructuredOutputMessage::Error { code, message }
+                if code == "busy" && message == "a headless turn is already running"
+        )));
+        assert!(messages.iter().any(|message| matches!(
+            message,
+            StructuredOutputMessage::Result { result }
+                if result.outcome.final_assistant_message.as_deref() == Some("slow reply")
+        )));
+    }
+
+    #[tokio::test]
+    async fn execute_request_permission_allow_sequence_matches_fixture() {
+        let harness = Harness::new();
+        fs::write(
+            harness
+                .project_dir
+                .parent()
+                .expect("workspace should exist")
+                .join("secret.txt"),
+            "secret note",
+        )
+        .expect("secret note should be written");
+        let mut session = bootstrap_session_from(
+            harness.project_dir.clone(),
+            StaticTerminalCapabilities::new(false, false),
+            TestPathPolicy {
+                home_dir: harness.home_dir.clone(),
+            },
+        )
+        .expect("bootstrap session should assemble");
+        let driver = Arc::new(ScriptedModelDriver::new(vec![
+            Ok(vec![
+                ModelStreamEvent::ToolCallRequested {
+                    call: ToolCall::new(
+                        "toolu_1",
+                        "file_read",
+                        serde_json::json!({ "file_path": "../secret.txt" }),
+                    ),
+                },
+                ModelStreamEvent::ModelFinished {
+                    finish_reason: ModelFinishReason::ToolUse,
+                },
+            ]),
+            Ok(vec![
+                ModelStreamEvent::TextDelta {
+                    delta: "allowed read".to_owned(),
+                },
+                ModelStreamEvent::AssistantMessageFinished,
+                ModelStreamEvent::ModelFinished {
+                    finish_reason: ModelFinishReason::Completed,
+                },
+            ]),
+        ]));
+        let stdout = BufferWriter::shared();
+        let output = stdout.writer();
+        let resolver = StructuredPermissionResolver::new(Arc::clone(&output));
+        emit_structured(
+            &output,
+            &StructuredOutputMessage::SessionStarted {
+                session_id: session.runtime().session_id().as_str().to_owned(),
+            },
+        )
+        .expect("session started should serialize");
+        let cancellation = CancellationFlag::new();
+        let pending = execute_request(
+            &mut session,
+            driver.as_ref(),
+            request_from_text("read the secret".to_owned()),
+            &resolver,
+            cancellation,
+            Some(&output),
+        );
+        tokio::pin!(pending);
+
+        let request_id = wait_for_control_request_while_pending(&stdout, &mut pending).await;
+        assert!(
+            resolver
+                .apply_response(StructuredControlResponse::CanUseTool {
+                    request_id,
+                    behavior: PermissionBehavior::Allow,
+                    message: None,
+                })
+                .expect("allow response should apply")
+        );
+
+        let result = pending.await.expect("execute_request should succeed");
+        emit_structured(
+            &output,
+            &StructuredOutputMessage::Result {
+                result: Box::new(result),
+            },
+        )
+        .expect("result should serialize");
+
+        assert_eq!(
+            normalized_json_lines(&stdout.output()),
+            fixture_json_lines("tests/fixtures/headless_permission_allow.jsonl")
+        );
+    }
+
+    #[tokio::test]
+    async fn execute_request_permission_deny_sequence_matches_fixture() {
+        let harness = Harness::new();
+        let mut session = bootstrap_session_from(
+            harness.project_dir.clone(),
+            StaticTerminalCapabilities::new(false, false),
+            TestPathPolicy {
+                home_dir: harness.home_dir.clone(),
+            },
+        )
+        .expect("bootstrap session should assemble");
+        let driver = Arc::new(ScriptedModelDriver::new(vec![
+            Ok(vec![
+                ModelStreamEvent::ToolCallRequested {
+                    call: ToolCall::new(
+                        "toolu_1",
+                        "file_read",
+                        serde_json::json!({ "file_path": "../secret.txt" }),
+                    ),
+                },
+                ModelStreamEvent::ModelFinished {
+                    finish_reason: ModelFinishReason::ToolUse,
+                },
+            ]),
+            Ok(vec![
+                ModelStreamEvent::TextDelta {
+                    delta: "access denied".to_owned(),
+                },
+                ModelStreamEvent::AssistantMessageFinished,
+                ModelStreamEvent::ModelFinished {
+                    finish_reason: ModelFinishReason::Completed,
+                },
+            ]),
+        ]));
+        let stdout = BufferWriter::shared();
+        let output = stdout.writer();
+        let resolver = StructuredPermissionResolver::new(Arc::clone(&output));
+        emit_structured(
+            &output,
+            &StructuredOutputMessage::SessionStarted {
+                session_id: session.runtime().session_id().as_str().to_owned(),
+            },
+        )
+        .expect("session started should serialize");
+        let cancellation = CancellationFlag::new();
+        let pending = execute_request(
+            &mut session,
+            driver.as_ref(),
+            request_from_text("read the secret".to_owned()),
+            &resolver,
+            cancellation,
+            Some(&output),
+        );
+        tokio::pin!(pending);
+
+        let request_id = wait_for_control_request_while_pending(&stdout, &mut pending).await;
+        assert!(
+            resolver
+                .apply_response(StructuredControlResponse::CanUseTool {
+                    request_id,
+                    behavior: PermissionBehavior::Deny,
+                    message: Some("blocked by host".to_owned()),
+                })
+                .expect("deny response should apply")
+        );
+
+        let result = pending.await.expect("execute_request should succeed");
+        emit_structured(
+            &output,
+            &StructuredOutputMessage::Result {
+                result: Box::new(result),
+            },
+        )
+        .expect("result should serialize");
+
+        assert_eq!(
+            normalized_json_lines(&stdout.output()),
+            fixture_json_lines("tests/fixtures/headless_permission_deny.jsonl")
+        );
+    }
+
+    #[tokio::test]
+    async fn execute_request_interrupt_emits_cancel_request_fixture() {
+        let harness = Harness::new();
+        let mut session = bootstrap_session_from(
+            harness.project_dir.clone(),
+            StaticTerminalCapabilities::new(false, false),
+            TestPathPolicy {
+                home_dir: harness.home_dir.clone(),
+            },
+        )
+        .expect("bootstrap session should assemble");
+        let driver = Arc::new(ScriptedModelDriver::new(vec![Ok(vec![
+            ModelStreamEvent::ToolCallRequested {
+                call: ToolCall::new(
+                    "toolu_1",
+                    "file_read",
+                    serde_json::json!({ "file_path": "../secret.txt" }),
+                ),
+            },
+            ModelStreamEvent::ModelFinished {
+                finish_reason: ModelFinishReason::ToolUse,
+            },
+        ])]));
+        let stdout = BufferWriter::shared();
+        let output = stdout.writer();
+        let resolver = StructuredPermissionResolver::new(Arc::clone(&output));
+        emit_structured(
+            &output,
+            &StructuredOutputMessage::SessionStarted {
+                session_id: session.runtime().session_id().as_str().to_owned(),
+            },
+        )
+        .expect("session started should serialize");
+        let cancellation = CancellationFlag::new();
+        let pending = execute_request(
+            &mut session,
+            driver.as_ref(),
+            request_from_text("read the secret".to_owned()),
+            &resolver,
+            cancellation.clone(),
+            Some(&output),
+        );
+        tokio::pin!(pending);
+
+        wait_for_control_request_while_pending(&stdout, &mut pending).await;
+        cancellation.cancel();
+        resolver
+            .cancel_all("interrupt", true)
+            .expect("interrupt should cancel pending permission");
+
+        let result = pending.await.expect("execute_request should succeed");
+        emit_structured(
+            &output,
+            &StructuredOutputMessage::Result {
+                result: Box::new(result),
+            },
+        )
+        .expect("result should serialize");
+
+        assert_eq!(
+            normalized_json_lines(&stdout.output()),
+            fixture_json_lines("tests/fixtures/headless_permission_interrupt.jsonl")
+        );
+    }
+
     struct BufferWriter {
         inner: Arc<Mutex<Vec<u8>>>,
     }
@@ -860,10 +1257,13 @@ mod tests {
             })
         }
 
-        fn messages(&self) -> Vec<StructuredOutputMessage> {
+        fn output(&self) -> String {
             let bytes = self.inner.lock().expect("buffer lock should be available");
-            String::from_utf8(bytes.clone())
-                .expect("stdout should be utf-8")
+            String::from_utf8(bytes.clone()).expect("stdout should be utf-8")
+        }
+
+        fn messages(&self) -> Vec<StructuredOutputMessage> {
+            self.output()
                 .lines()
                 .map(|line| serde_json::from_str(line).expect("line should be valid json"))
                 .collect()
@@ -896,14 +1296,133 @@ mod tests {
             let home_dir = tempdir.path().join("home");
             let project_dir = tempdir.path().join("workspace").join("app");
 
-            std::fs::create_dir_all(&home_dir).expect("home dir should exist");
-            std::fs::create_dir_all(&project_dir).expect("project dir should exist");
+            fs::create_dir_all(&home_dir).expect("home dir should exist");
+            fs::create_dir_all(&project_dir).expect("project dir should exist");
 
             Self {
                 _tempdir: tempdir,
                 home_dir,
                 project_dir,
             }
+        }
+    }
+
+    fn seed_session(harness: &Harness, policy: &TestPathPolicy, session_id: &str) -> PathBuf {
+        let snapshot = load_startup_config(harness.project_dir.clone(), policy)
+            .expect("startup config should load");
+        let store = JsonlSessionStore::new(
+            snapshot.paths().clone(),
+            policy.clone(),
+            Arc::new(FakeGitWorktreeAdapter::new()),
+        );
+        let runtime = clawin_core::SessionRuntime::new(
+            SessionId::from_owned(session_id),
+            RuntimeCapabilities::new(false, false),
+            harness.project_dir.clone(),
+            snapshot.paths().project_root().to_path_buf(),
+            PermissionMode::Default,
+        );
+        store
+            .initialize_session(&runtime)
+            .expect("session header should persist");
+        store
+            .append_message(
+                &runtime,
+                &ConversationMessage::User {
+                    content: "hello".to_owned(),
+                },
+            )
+            .expect("user message should persist");
+        store
+            .append_message(
+                &runtime,
+                &ConversationMessage::Assistant {
+                    content: "world".to_owned(),
+                },
+            )
+            .expect("assistant message should persist");
+
+        snapshot
+            .paths()
+            .projects_root()
+            .join(policy.sanitize_for_session_dir(snapshot.paths().project_root()))
+            .join(format!("{session_id}.jsonl"))
+    }
+
+    async fn wait_for_control_request_while_pending<F>(
+        stdout: &BufferWriter,
+        pending: &mut std::pin::Pin<&mut F>,
+    ) -> String
+    where
+        F: Future<Output = ClawinResult<StructuredRunResult>>,
+    {
+        for _ in 0..50 {
+            if let Some(StructuredOutputMessage::ControlRequest {
+                request: StructuredControlRequest::CanUseTool { request_id, .. },
+            }) = stdout.messages().iter().find(|message| {
+                matches!(
+                    message,
+                    StructuredOutputMessage::ControlRequest {
+                        request: StructuredControlRequest::CanUseTool { .. }
+                    }
+                )
+            }) {
+                return request_id.clone();
+            }
+            tokio::select! {
+                result = pending.as_mut() => {
+                    let _ = result;
+                    panic!("execute_request completed before emitting a control request");
+                }
+                _ = tokio::time::sleep(Duration::from_millis(10)) => {}
+            }
+        }
+
+        panic!("timed out waiting for control request");
+    }
+
+    fn fixture_text(path: &str) -> String {
+        let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(path);
+        fs::read_to_string(fixture_path).expect("fixture should exist")
+    }
+
+    fn fixture_json_lines(path: &str) -> Vec<Value> {
+        normalized_json_lines(&fixture_text(path))
+    }
+
+    fn normalized_json_lines(output: &str) -> Vec<Value> {
+        if output.trim().is_empty() {
+            return Vec::new();
+        }
+
+        output
+            .lines()
+            .map(|line| {
+                let mut value: Value =
+                    serde_json::from_str(line).expect("line should be valid json");
+                normalize_json_value(&mut value);
+                value
+            })
+            .collect::<Vec<_>>()
+    }
+
+    fn normalize_json_value(value: &mut Value) {
+        match value {
+            Value::Object(map) => {
+                for (key, child) in map.iter_mut() {
+                    if key == "session_id" {
+                        *child = Value::String("<session-id>".to_owned());
+                    } else {
+                        normalize_json_value(child);
+                    }
+                }
+            }
+            Value::Array(items) => {
+                for child in items {
+                    normalize_json_value(child);
+                }
+            }
+            _ => {}
         }
     }
 
@@ -969,6 +1488,28 @@ mod tests {
                 });
 
             Box::pin(async move { response })
+        }
+    }
+
+    struct DelayedModelDriver {
+        delay: Duration,
+        response: Vec<ModelStreamEvent>,
+    }
+
+    impl DelayedModelDriver {
+        fn new(delay: Duration, response: Vec<ModelStreamEvent>) -> Self {
+            Self { delay, response }
+        }
+    }
+
+    impl ModelDriver for DelayedModelDriver {
+        fn stream(&self, _request: ModelRequest) -> ModelDriverFuture<'_> {
+            let delay = self.delay;
+            let response = self.response.clone();
+            Box::pin(async move {
+                tokio::time::sleep(delay).await;
+                Ok(response)
+            })
         }
     }
 }

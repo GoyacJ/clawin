@@ -1,0 +1,6 @@
+{
+  "type": "worktree",
+  "action": "entered",
+  "path": "__WORKTREE_PATH__",
+  "branch": "worktree-feature-a"
+}

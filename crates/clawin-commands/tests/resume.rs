@@ -27,8 +27,10 @@ fn resume_without_args_lists_recent_sessions() {
         .expect("resume list command should succeed");
 
     assert!(result.effect.is_none());
-    assert!(result.output.contains("session-123"));
-    assert!(result.output.contains("fix parser"));
+    assert_eq!(
+        result.output,
+        include_str!("fixtures/resume_listing_output.txt")
+    );
 }
 
 #[test]
@@ -68,7 +70,29 @@ fn continue_alias_returns_resume_effect_for_exact_match() {
         }
         other => panic!("unexpected command effect: {other:?}"),
     }
-    assert!(result.output.contains("session-456"));
+    assert_eq!(
+        result.output.trim_end(),
+        include_str!("fixtures/resume_success_output.txt").trim_end()
+    );
+}
+
+#[test]
+fn resume_with_unmatched_token_returns_stable_no_match_output() {
+    let registry = builtin_command_registry();
+    let runtime = runtime(Arc::new(FakeSessionStore::with_query_results(
+        QueryResult::ok(None),
+        QueryResult::ok(None),
+    )));
+
+    let result = registry
+        .execute("/resume session-missing", &runtime)
+        .expect("missing resume target should render stable output");
+
+    assert!(result.effect.is_none());
+    assert_eq!(
+        result.output.trim_end(),
+        include_str!("fixtures/resume_no_match_output.txt").trim_end()
+    );
 }
 
 #[test]
@@ -86,7 +110,7 @@ fn resume_surfaces_ambiguous_search_errors() {
     assert!(matches!(
         error,
         ClawinError::InvalidConfiguration { message }
-        if message.contains("multiple sessions")
+        if message == include_str!("fixtures/resume_ambiguous_error.txt").trim_end()
     ));
 }
 
@@ -105,7 +129,7 @@ fn resume_surfaces_invalid_transcript_errors() {
     assert!(matches!(
         error,
         ClawinError::InvalidConfiguration { message }
-        if message.contains("failed to read session transcript")
+        if message == include_str!("fixtures/resume_invalid_transcript_error.txt").trim_end()
     ));
 }
 

@@ -153,6 +153,9 @@ where
     }
 
     pub fn transcript_path(&self, runtime: &SessionRuntime) -> PathBuf {
+        if let Some(path) = runtime.session_transcript_path() {
+            return path;
+        }
         self.session_project_directory(runtime.active_project_root())
             .join(format!("{}.jsonl", runtime.session_id().as_str()))
     }

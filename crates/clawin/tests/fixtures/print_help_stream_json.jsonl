@@ -1,0 +1,8 @@
+{"type":"session_started","session_id":"<session-id>"}
+{"type":"stream_event","event":{"type":"session_started","session_id":"<session-id>"}}
+{"type":"stream_event","event":{"type":"turn_started","turn_id":1}}
+{"type":"stream_event","event":{"type":"command_parsed","raw_name":"help","command_name":"help"}}
+{"type":"stream_event","event":{"type":"command_executed","command_name":"help","output":"Available commands:\n/help - Show help and available commands\n"}}
+{"type":"stream_event","event":{"type":"turn_finished","turn_id":1,"stop_reason":"command_handled"}}
+{"type":"stream_event","event":{"type":"session_finished","session_id":"<session-id>","stop_reason":"command_handled"}}
+{"type":"result","result":{"outcome":{"stop_reason":"command_handled","final_assistant_message":null,"turn_count":1,"last_turn_id":1,"transcript":[],"budget_tracker":{"continuation_count":0,"last_delta_tokens":0,"last_total_tokens":0},"budget_decision":null,"compaction":null},"command_output":"Available commands:\n/help - Show help and available commands\n"}}

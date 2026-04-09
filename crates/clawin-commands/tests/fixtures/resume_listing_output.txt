@@ -1,0 +1,2 @@
+Recent sessions:
+- session-123 prompt=fix parser path=/tmp/session-123.jsonl

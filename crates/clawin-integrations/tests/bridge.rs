@@ -72,6 +72,65 @@ fn bridge_pointer_store_prefers_freshest_same_repo_pointer() {
 }
 
 #[test]
+fn bridge_pointer_store_prefers_session_transcript_anchor_when_present() {
+    let harness = Harness::new();
+    let snapshot = harness.load_config();
+    let git = Arc::new(FakeGitWorktreeAdapter::new());
+    let store = BridgePointerStore::new(
+        snapshot.paths().clone(),
+        harness.path_policy(),
+        Arc::clone(&git),
+    );
+    let runtime = harness.runtime("bridge-anchored", harness.worktree_dir.clone());
+    let anchored_path = snapshot
+        .paths()
+        .projects_root()
+        .join("anchored-project")
+        .join("bridge-anchored.jsonl");
+    runtime.set_session_transcript_path(anchored_path.clone());
+
+    assert_eq!(store.transcript_path(&runtime), anchored_path);
+}
+
+#[test]
+fn bridge_pointer_file_matches_fixture() {
+    let harness = Harness::new();
+    let snapshot = harness.load_config();
+    let git = Arc::new(FakeGitWorktreeAdapter::new());
+    let store = BridgePointerStore::new(
+        snapshot.paths().clone(),
+        harness.path_policy(),
+        Arc::clone(&git),
+    );
+    let runtime = harness.runtime("bridge-pointer-sample", harness.project_dir.clone());
+    let transcript_path = snapshot
+        .paths()
+        .projects_root()
+        .join("pointer-sample")
+        .join("bridge-pointer-sample.jsonl");
+    runtime.set_session_transcript_path(transcript_path.clone());
+    let pointer = BridgePointer {
+        bridge_session_id: "bridge-session-1".to_owned(),
+        environment_id: "env-1".to_owned(),
+        source: BridgePointerSource::Standalone,
+        local_session_id: runtime.session_id().clone(),
+        transcript_path: store.transcript_path(&runtime),
+    };
+
+    let path = store
+        .save(&runtime, &pointer)
+        .expect("bridge pointer should save");
+    let saved = fs::read_to_string(path).expect("saved bridge pointer should be readable");
+
+    assert_eq!(
+        normalize_pointer_fixture(&saved, &transcript_path),
+        fixture_text("tests/fixtures/bridge_pointer_sample.json")
+            .trim_end_matches('\n')
+            .to_owned()
+    );
+}
+
+#[test]
 fn stale_bridge_pointer_is_cleaned_when_loaded() {
     let harness = Harness::new();
     let snapshot = harness.load_config();
@@ -107,6 +166,64 @@ fn stale_bridge_pointer_is_cleaned_when_loaded() {
         "stale pointer should be treated as missing"
     );
     assert!(!path.exists(), "stale pointer should be removed");
+}
+
+#[test]
+fn bridge_manager_reuses_existing_worker_when_started_twice() {
+    let harness = Harness::new();
+    let snapshot = harness.load_config();
+    let git = Arc::new(FakeGitWorktreeAdapter::new());
+    let (connector, remotes) = FakeBridgeConnector::with_sessions(vec![(
+        "bridge-session-1".to_owned(),
+        "env-1".to_owned(),
+        FakeBridgeConnector::empty_remote(),
+    )]);
+    let manager = BridgeManager::with_policy(
+        snapshot.paths().clone(),
+        harness.path_policy(),
+        git,
+        connector,
+        ReconnectPolicy {
+            initial_delay: Duration::from_millis(5),
+            max_delay: Duration::from_millis(10),
+            give_up_after: Duration::from_millis(25),
+            poll_interval: Duration::from_millis(5),
+        },
+    );
+    let runtime = harness.runtime("bridge-runtime", harness.project_dir.clone());
+    let first_host = Arc::new(RecordingHost::default());
+    let second_host = Arc::new(RecordingHost::default());
+
+    let first_status = manager
+        .start(
+            &runtime,
+            first_host.clone(),
+            BridgeMode::Standalone,
+            BridgePointerSource::Standalone,
+            Some("demo".to_owned()),
+            None,
+        )
+        .expect("bridge manager should start");
+    let second_status = manager
+        .start(
+            &runtime,
+            second_host,
+            BridgeMode::Standalone,
+            BridgePointerSource::Standalone,
+            Some("ignored".to_owned()),
+            None,
+        )
+        .expect("repeated start should return current status");
+
+    assert_eq!(second_status, first_status);
+    assert!(matches!(
+        remotes[0].recv_timeout(Duration::from_millis(50)),
+        Some(StructuredOutputMessage::SessionStarted { session_id })
+            if session_id == runtime.session_id().as_str()
+    ));
+
+    let stopped = manager.stop().expect("bridge manager should stop");
+    assert_eq!(stopped.state, BridgeState::Stopped);
 }
 
 #[test]
@@ -153,10 +270,28 @@ fn bridge_manager_transitions_from_connected_to_failed_after_disconnect_give_up(
     ));
 
     remotes[0].disconnect();
+    let reconnecting_deadline = std::time::Instant::now() + Duration::from_millis(50);
+    let mut saw_reconnecting = false;
+    while std::time::Instant::now() < reconnecting_deadline {
+        if manager
+            .status()
+            .expect("bridge manager status should be readable")
+            .state
+            == BridgeState::Reconnecting
+        {
+            saw_reconnecting = true;
+            break;
+        }
+        thread::sleep(Duration::from_millis(5));
+    }
     let final_status = manager
         .wait_for_terminal_state()
         .expect("bridge manager should stop waiting");
 
+    assert!(
+        saw_reconnecting,
+        "disconnect should enter reconnecting state"
+    );
     assert_eq!(final_status.state, BridgeState::Failed);
     assert!(
         host.closed_reasons()
@@ -269,4 +404,13 @@ impl PathPolicy for TestPathPolicy {
     fn project_manifest_name(&self) -> &'static str {
         "CLAWIN.md"
     }
+}
+
+fn fixture_text(path: &str) -> String {
+    let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(path);
+    fs::read_to_string(fixture_path).expect("fixture should exist")
+}
+
+fn normalize_pointer_fixture(saved: &str, transcript_path: &std::path::Path) -> String {
+    saved.replace(&transcript_path.display().to_string(), "<transcript-path>")
 }

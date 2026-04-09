@@ -2,7 +2,7 @@
 
 - 更新时间: 2026-04-09
 - 当前里程碑: `M7`
-- 当前执行阶段: `Phase 8 in progress`
+- 当前执行阶段: `Phase 8D: Remote Control / Bridge parity hardening`
 
 ## 总体状态
 
@@ -23,14 +23,16 @@
 | TUI / REPL | `Parity Pending` | 最小 REPL 闭环已达成，但 UI 语义仍是精简版 | 补 snapshot / 三平台终端证据与当前 UI 边界说明 |
 | MCP | `Parity Pending` | stdio MCP 最小闭环已达成 | 补 `/mcp`、resource tools、动态 tool 的来源样本与平台结论 |
 | Skills / Plugins | `Parity Pending` | 动态 skill/plugin runtime 已达成最小闭环 | 当前优先收口 display/token 分离、plugin precedence 与 `/skills`、`/plugin` 的公共输出证据 |
-| Worktree / Session / Resume | `Parity Pending` | 关键恢复链路可用，但恢复细节仍待 hardening | 补 transcript 真源、恢复失败路径与 worktree 生命周期证据 |
-| Structured IO / Headless | `Parity Pending` | `--print` 主链路已可用，但对标证据还不完整 | 补 stream-json / permission / resume 的 golden 与平台说明 |
-| Remote Control / Bridge | `Parity Pending` | bridge 最小闭环已达成，但仍依赖 fake connector 验证 | 补 pointer recovery、busy/cancel/reconnect 的来源样本与 fixture |
+| Worktree / Session / Resume | `Parity Pending` | transcript 真源、restore failure path、worktree 生命周期与 restored runtime/file-read 证据已进入测试基线，但仍缺 sourcemap 摘录与三平台结论 | 保持 8B fixture 基线，继续补公开行为来源证据、平台路径说明与 `Parity Verified` 升级材料 |
+| Structured IO / Headless | `Parity Pending` | `--print` 主链路已可用，text/json/stream-json、permission、busy、interrupt、resume-in-print 的 fixture 基线已形成 | 保持 8C fixture 基线，继续补协议来源摘录、三平台 smoke 说明与 `Parity Verified` 升级证据 |
+| Remote Control / Bridge | `Parity Pending` | bridge 最小闭环已达成，pointer anchor、busy/cancel/reconnect、status 输出与 CLI unavailable/no-pointer smoke 已进入 fixture 基线，但仍依赖 fake connector 验证 | 当前优先补齐 sourcemap 摘录、REPL attached 证据与三平台 smoke 说明 |
 
 ## 当前重点
 
 - 固化 `M7` 已实现的最小闭环，不再把“最小实现”直接表述为“已完成对标”
-- `Phase 8A` 当前优先批次先收口 `Skills / Plugins`，把 display/token、precedence 与 plugin failure 文本输出锁进测试与 fixture
+- `Phase 8C` 的 `Structured IO / Headless` 已形成新的 fixture 基线，当前切换到 `Phase 8D` 收口 `Remote Control / Bridge`
+- `Phase 8D` 当前优先批次固定 bridge 路径：补齐 pointer recovery、status 输出、busy/interrupt/permission mediation、reconnect 与 CLI failure path 的公共输出证据
+- `Skills / Plugins` 已进入新的 fixture 基线，下一步以 sourcemap 摘录、三平台结论和 `Parity Verified` 升级证据为主
 - 以 [sourcemap-audit.md](/Users/goya/Repo/claude/clawin/docs/status/sourcemap-audit.md) 为基线，逐子系统补齐 `Parity Verified` 所需证据
 - 新增发布检查表，并在 `status`、`roadmap`、`parity matrix` 与根入口文档之间收敛里程碑口径
 

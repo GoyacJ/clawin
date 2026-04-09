@@ -1,0 +1,12 @@
+{"type":"session_started","session_id":"<session-id>"}
+{"type":"stream_event","event":{"type":"session_started","session_id":"<session-id>"}}
+{"type":"stream_event","event":{"type":"turn_started","turn_id":1}}
+{"type":"stream_event","event":{"type":"tool_requested","turn_id":1,"call_id":"toolu_1","tool_name":"file_read"}}
+{"type":"control_request","request":{"type":"can_use_tool","request_id":"perm-1","call_id":"toolu_1","tool_name":"file_read","input":{"file_path":"../secret.txt"},"message":"requested path is outside the project root"}}
+{"type":"stream_event","event":{"type":"tool_permission_resolved","turn_id":1,"call_id":"toolu_1","tool_name":"file_read","behavior":"deny"}}
+{"type":"stream_event","event":{"type":"tool_completed","turn_id":1,"call_id":"toolu_1","tool_name":"file_read","is_error":true}}
+{"type":"stream_event","event":{"type":"assistant_text_delta","turn_id":1,"delta":"access denied"}}
+{"type":"stream_event","event":{"type":"assistant_message_completed","turn_id":1,"content":"access denied"}}
+{"type":"stream_event","event":{"type":"turn_finished","turn_id":1,"stop_reason":"completed"}}
+{"type":"stream_event","event":{"type":"session_finished","session_id":"<session-id>","stop_reason":"completed"}}
+{"type":"result","result":{"outcome":{"stop_reason":"completed","final_assistant_message":"access denied","turn_count":1,"last_turn_id":1,"transcript":[{"type":"user","content":"read the secret"},{"type":"tool_use","call_id":"toolu_1","tool_name":"file_read","input":{"file_path":"../secret.txt"}},{"type":"tool_result","call_id":"toolu_1","tool_name":"file_read","is_error":true,"content":{"type":"error","code":"permission_denied","message":"blocked by host","permission_behavior":"deny"}},{"type":"assistant","content":"access denied"}],"budget_tracker":{"continuation_count":0,"last_delta_tokens":0,"last_total_tokens":0},"budget_decision":null,"compaction":null}}}

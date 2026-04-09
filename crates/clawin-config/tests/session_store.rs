@@ -258,6 +258,187 @@ fn keeps_single_transcript_file_when_session_enters_worktree() {
     assert_eq!(restored.active_project_root, worktree_dir);
 }
 
+#[test]
+fn restores_fixture_session_with_worktree_state_and_ignores_unknown_entries() {
+    let harness = SessionHarness::new();
+    let policy = TestPathPolicy::new(harness.home_dir());
+    let config = load_startup_config(harness.project_dir(), &policy).expect("config should load");
+    let store = JsonlSessionStore::new(
+        config.paths().clone(),
+        policy,
+        Arc::new(FakeGitWorktreeAdapter::new()),
+    );
+    let runtime = SessionRuntime::new(
+        SessionId::from_owned("fixture-runtime"),
+        RuntimeCapabilities::new(false, false),
+        harness.project_dir(),
+        config.paths().project_root().to_path_buf(),
+        PermissionMode::Default,
+    );
+
+    let restored = store
+        .resolve_resume(
+            &runtime,
+            ResumeQuery::Path(fixture_path(
+                "tests/fixtures/restored_session_with_worktree.jsonl",
+            )),
+        )
+        .expect("fixture restore should succeed")
+        .expect("fixture session should load");
+
+    assert_eq!(restored.session_id.as_str(), "fixture-session");
+    assert_eq!(restored.last_prompt.as_deref(), Some("inspect worktree"));
+    assert_eq!(restored.transcript.len(), 2);
+    assert_eq!(
+        restored.active_project_root,
+        PathBuf::from("/repo/.clawin/worktrees/feature-a")
+    );
+    assert_eq!(
+        restored.worktree_state,
+        Some(PersistedWorktreeSession::new(
+            PathBuf::from("/repo"),
+            PathBuf::from("/repo/.clawin/worktrees/feature-a"),
+            Some("worktree-feature-a".to_owned()),
+            true,
+        ))
+    );
+}
+
+#[test]
+fn detects_interrupted_prompt_from_fixture() {
+    let harness = SessionHarness::new();
+    let policy = TestPathPolicy::new(harness.home_dir());
+    let config = load_startup_config(harness.project_dir(), &policy).expect("config should load");
+    let store = JsonlSessionStore::new(
+        config.paths().clone(),
+        policy,
+        Arc::new(FakeGitWorktreeAdapter::new()),
+    );
+    let runtime = SessionRuntime::new(
+        SessionId::from_owned("fixture-runtime"),
+        RuntimeCapabilities::new(false, false),
+        harness.project_dir(),
+        config.paths().project_root().to_path_buf(),
+        PermissionMode::Default,
+    );
+
+    let restored = store
+        .resolve_resume(
+            &runtime,
+            ResumeQuery::Path(fixture_path(
+                "tests/fixtures/interrupted_prompt_session.jsonl",
+            )),
+        )
+        .expect("fixture restore should succeed")
+        .expect("fixture session should load");
+
+    assert_eq!(
+        restored.interruption_state,
+        ResumeInterruptionState::InterruptedPrompt
+    );
+    assert_eq!(restored.transcript.len(), 1);
+}
+
+#[test]
+fn rejects_invalid_known_entries_from_fixture() {
+    let harness = SessionHarness::new();
+    let policy = TestPathPolicy::new(harness.home_dir());
+    let config = load_startup_config(harness.project_dir(), &policy).expect("config should load");
+    let store = JsonlSessionStore::new(
+        config.paths().clone(),
+        policy,
+        Arc::new(FakeGitWorktreeAdapter::new()),
+    );
+    let runtime = SessionRuntime::new(
+        SessionId::from_owned("fixture-runtime"),
+        RuntimeCapabilities::new(false, false),
+        harness.project_dir(),
+        config.paths().project_root().to_path_buf(),
+        PermissionMode::Default,
+    );
+
+    let error = store
+        .resolve_resume(
+            &runtime,
+            ResumeQuery::Path(fixture_path("tests/fixtures/invalid_message_entry.jsonl")),
+        )
+        .expect_err("invalid session entry should fail");
+
+    assert!(matches!(
+        error,
+        clawin_core::ClawinError::InvalidConfiguration { message }
+            if message.contains("invalid session message entry")
+    ));
+}
+
+#[test]
+fn rejects_unsupported_schema_fixture() {
+    let harness = SessionHarness::new();
+    let policy = TestPathPolicy::new(harness.home_dir());
+    let config = load_startup_config(harness.project_dir(), &policy).expect("config should load");
+    let store = JsonlSessionStore::new(
+        config.paths().clone(),
+        policy,
+        Arc::new(FakeGitWorktreeAdapter::new()),
+    );
+    let runtime = SessionRuntime::new(
+        SessionId::from_owned("fixture-runtime"),
+        RuntimeCapabilities::new(false, false),
+        harness.project_dir(),
+        config.paths().project_root().to_path_buf(),
+        PermissionMode::Default,
+    );
+
+    let error = store
+        .resolve_resume(
+            &runtime,
+            ResumeQuery::Path(fixture_path(
+                "tests/fixtures/unsupported_schema_session.jsonl",
+            )),
+        )
+        .expect_err("unsupported schema should fail");
+
+    assert!(matches!(
+        error,
+        clawin_core::ClawinError::InvalidConfiguration { message }
+            if message.contains("unsupported session schema version")
+    ));
+}
+
+#[test]
+fn deduplicates_same_repo_session_scope_after_path_normalization() {
+    let harness = SessionHarness::new();
+    let policy = WindowsLikePathPolicy::new(harness.home_dir());
+    let config = load_startup_config(harness.project_dir(), &policy).expect("config should load");
+    let git = Arc::new(FakeGitWorktreeAdapter::new());
+    git.register_repository(
+        config.paths().project_root().to_path_buf(),
+        vec![
+            config.paths().project_root().to_path_buf(),
+            PathBuf::from("/REPO"),
+        ],
+    );
+    let store = JsonlSessionStore::new(config.paths().clone(), policy.clone(), git);
+
+    let runtime = SessionRuntime::new(
+        SessionId::from_owned("session-win"),
+        RuntimeCapabilities::new(false, false),
+        harness.project_dir(),
+        config.paths().project_root().to_path_buf(),
+        PermissionMode::Default,
+    )
+    .with_active_project_root(PathBuf::from("/REPO"));
+    store
+        .initialize_session(&runtime)
+        .expect("session header should persist");
+
+    let previews = store
+        .list_recent_sessions(&runtime)
+        .expect("recent sessions should load");
+    assert_eq!(previews.len(), 1);
+    assert_eq!(previews[0].session_id.as_str(), "session-win");
+}
+
 struct SessionHarness {
     _tempdir: TempDir,
     home_dir: PathBuf,
@@ -320,4 +501,39 @@ impl PathPolicy for TestPathPolicy {
     fn project_manifest_name(&self) -> &'static str {
         "CLAWIN.md"
     }
+}
+
+#[derive(Clone, Debug)]
+struct WindowsLikePathPolicy {
+    home_dir: PathBuf,
+}
+
+impl WindowsLikePathPolicy {
+    fn new(home_dir: PathBuf) -> Self {
+        Self { home_dir }
+    }
+}
+
+impl PathPolicy for WindowsLikePathPolicy {
+    fn home_dir(&self) -> Option<PathBuf> {
+        Some(self.home_dir.clone())
+    }
+
+    fn normalize_for_config_key(&self, path: &Path) -> String {
+        path.to_string_lossy()
+            .replace('\\', "/")
+            .to_ascii_lowercase()
+    }
+
+    fn project_directory_name(&self) -> &'static str {
+        ".clawin"
+    }
+
+    fn project_manifest_name(&self) -> &'static str {
+        "CLAWIN.md"
+    }
+}
+
+fn fixture_path(path: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(path)
 }
