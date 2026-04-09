@@ -1,0 +1,7 @@
+Skill `Code Review (/code-review)` loaded from project.
+Description: Review staged code carefully
+Allowed tools: file_read
+Markdown:
+# Code Review
+Review staged code carefully.
+

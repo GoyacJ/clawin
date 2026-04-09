@@ -3,7 +3,8 @@ use std::path::PathBuf;
 
 use clawin_config::load_startup_config;
 use clawin_integrations::{
-    PluginRuntimeStatus, SkillSource, load_plugins_snapshot, load_skills_snapshot,
+    PluginRuntimeSource, PluginRuntimeStatus, SkillSource, load_plugins_snapshot,
+    load_skills_snapshot,
 };
 use clawin_platform::PathPolicy;
 use serde_json::json;
@@ -181,6 +182,194 @@ Deploy from the project plugin.
         failed.errors(),
         vec!["invalid plugin manifest: missing or invalid `name`".to_owned()].as_slice()
     );
+}
+
+#[test]
+fn project_plugin_overrides_failed_user_plugin_with_same_id() {
+    let harness = Harness::new();
+    harness.write_raw_plugin_file(PluginLocation::User, "demo-plugin", "plugin.json", b"{}");
+    harness.write_plugin_manifest(
+        PluginLocation::Project,
+        "demo-plugin",
+        json!({
+            "name": "demo-plugin",
+            "description": "Project plugin override"
+        }),
+    );
+
+    let snapshot = load_plugins_snapshot(&harness.load_config());
+
+    let loaded = snapshot
+        .plugins()
+        .iter()
+        .find(|plugin| {
+            plugin.id() == "demo-plugin"
+                && plugin.source() == PluginRuntimeSource::Project
+                && plugin.status() == PluginRuntimeStatus::Loaded
+        })
+        .expect("project plugin should load");
+    assert_eq!(loaded.description(), "Project plugin override");
+
+    let ignored = snapshot
+        .plugins()
+        .iter()
+        .find(|plugin| {
+            plugin.id() == "demo-plugin"
+                && plugin.source() == PluginRuntimeSource::User
+                && plugin.status() == PluginRuntimeStatus::Ignored
+        })
+        .expect("failed user plugin should be ignored once the project override exists");
+    assert!(
+        ignored
+            .errors()
+            .iter()
+            .any(|error| error.contains("overridden by higher-precedence project plugin"))
+    );
+}
+
+#[test]
+fn failed_project_plugin_masks_loaded_user_plugin_with_same_id() {
+    let harness = Harness::new();
+    harness.write_plugin_manifest(
+        PluginLocation::User,
+        "demo-plugin",
+        json!({
+            "name": "demo-plugin",
+            "description": "User plugin",
+            "commands": ["./commands"]
+        }),
+    );
+    harness.write_plugin_command(
+        PluginLocation::User,
+        "demo-plugin",
+        "deploy",
+        r#"---
+description: Deploy from user plugin
+---
+# Deploy
+Deploy from the user plugin.
+"#,
+    );
+    harness.write_raw_plugin_file(PluginLocation::Project, "demo-plugin", "plugin.json", b"{}");
+
+    let snapshot = load_plugins_snapshot(&harness.load_config());
+
+    let failed = snapshot
+        .plugins()
+        .iter()
+        .find(|plugin| {
+            plugin.id() == "demo-plugin"
+                && plugin.source() == PluginRuntimeSource::Project
+                && plugin.status() == PluginRuntimeStatus::Failed
+        })
+        .expect("project plugin should remain the active failed entry");
+    assert!(
+        failed
+            .errors()
+            .iter()
+            .any(|error| error.contains("missing or invalid `name`"))
+    );
+
+    let ignored = snapshot
+        .plugins()
+        .iter()
+        .find(|plugin| {
+            plugin.id() == "demo-plugin"
+                && plugin.source() == PluginRuntimeSource::User
+                && plugin.status() == PluginRuntimeStatus::Ignored
+        })
+        .expect("loaded user plugin should be ignored by the failed project plugin");
+    assert!(
+        ignored
+            .errors()
+            .iter()
+            .any(|error| error.contains("overridden by higher-precedence project plugin"))
+    );
+    assert!(snapshot.loaded_commands().is_empty());
+}
+
+#[test]
+fn normalizes_skill_command_names_and_reports_normalized_duplicates() {
+    let harness = Harness::new();
+    harness.write_skill(
+        SkillLocation::Project,
+        "code-review-a",
+        r#"---
+name: Code Review
+description: Review code carefully
+tools:
+  - file_read
+---
+# Code Review
+Review code carefully.
+"#,
+    );
+    harness.write_skill(
+        SkillLocation::Project,
+        "code-review-b",
+        r#"---
+name: Code   Review!
+description: Duplicate after normalization
+tools:
+  - file_read
+---
+# Code Review
+Duplicate after normalization.
+"#,
+    );
+
+    let snapshot = load_skills_snapshot(&harness.load_config());
+
+    assert_eq!(snapshot.skills().len(), 1);
+    let skill = &snapshot.skills()[0];
+    assert_eq!(skill.name(), "Code Review");
+    assert_eq!(skill.command_name(), "code-review");
+    assert!(snapshot.errors().iter().any(|error| {
+        error
+            .message()
+            .contains("duplicate skill command `code-review`")
+    }));
+}
+
+#[test]
+fn plugin_skills_use_normalized_command_tokens() {
+    let harness = Harness::new();
+    harness.write_plugin_manifest(
+        PluginLocation::User,
+        "demo-plugin",
+        json!({
+            "name": "demo-plugin",
+            "description": "Demo plugin",
+            "skills": ["./skills"]
+        }),
+    );
+    harness.write_plugin_skill(
+        PluginLocation::User,
+        "demo-plugin",
+        "code-review",
+        r#"---
+name: Code Review
+description: Review deployment state
+tools:
+  - file_read
+---
+# Code Review
+Review deployment state.
+"#,
+    );
+
+    let snapshot = load_plugins_snapshot(&harness.load_config());
+
+    let plugin = snapshot
+        .plugins()
+        .iter()
+        .find(|plugin| plugin.id() == "demo-plugin")
+        .expect("plugin should exist");
+    assert_eq!(
+        plugin.skill_command_names(),
+        vec!["demo-plugin:code-review".to_owned()]
+    );
+    assert_eq!(plugin.skills()[0].name(), "Code Review");
 }
 
 struct Harness {

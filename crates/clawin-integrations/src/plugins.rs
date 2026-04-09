@@ -246,26 +246,16 @@ pub fn load_plugins_snapshot(snapshot: &LoadedConfigSnapshot) -> LoadedPluginsSn
             let mut plugin = load_plugin_from_root(&plugin_root, source);
             if let Some(previous_index) = loaded_by_id.get(plugin.id()).copied() {
                 let previous_source = plugins[previous_index].source;
-                if source.precedence() > previous_source.precedence()
-                    && plugins[previous_index].status == PluginRuntimeStatus::Loaded
-                {
-                    plugins[previous_index].status = PluginRuntimeStatus::Ignored;
-                    plugins[previous_index]
-                        .errors
-                        .push("overridden by higher-precedence project plugin".to_owned());
-                    if plugin.status == PluginRuntimeStatus::Loaded {
-                        loaded_by_id.insert(plugin.id.clone(), plugins.len());
-                    }
+                if source.precedence() > previous_source.precedence() {
+                    ignore_plugin(
+                        &mut plugins[previous_index],
+                        "overridden by higher-precedence project plugin",
+                    );
+                    loaded_by_id.insert(plugin.id.clone(), plugins.len());
                 } else {
-                    plugin.status = PluginRuntimeStatus::Ignored;
-                    plugin.commands.clear();
-                    plugin.skills.clear();
-                    plugin.mcp_servers.clear();
-                    plugin
-                        .errors
-                        .push("duplicate plugin id already loaded".to_owned());
+                    ignore_plugin(&mut plugin, "duplicate plugin id already loaded");
                 }
-            } else if plugin.status == PluginRuntimeStatus::Loaded {
+            } else {
                 loaded_by_id.insert(plugin.id.clone(), plugins.len());
             }
 
@@ -274,6 +264,14 @@ pub fn load_plugins_snapshot(snapshot: &LoadedConfigSnapshot) -> LoadedPluginsSn
     }
 
     LoadedPluginsSnapshot::new(plugins)
+}
+
+fn ignore_plugin(plugin: &mut LoadedPlugin, reason: &str) {
+    plugin.status = PluginRuntimeStatus::Ignored;
+    plugin.commands.clear();
+    plugin.skills.clear();
+    plugin.mcp_servers.clear();
+    plugin.errors.push(reason.to_owned());
 }
 
 fn load_plugin_from_root(root: &Path, source: PluginRuntimeSource) -> LoadedPlugin {

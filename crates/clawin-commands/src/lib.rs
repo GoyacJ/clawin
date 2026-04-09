@@ -3,13 +3,12 @@
 //! Minimal slash command registry and built-in commands for Phase 6A.
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use clawin_core::{
     BridgeCommandAction, BridgeStatusSnapshot, ClawinError, ClawinResult, CommandEffect,
     CommandExecutionResult, CommandKind, CommandSource, CommandSpec, ParsedCommandInvocation,
-    ResumeQuery, SessionPreview, SessionRuntime,
+    SessionPreview, SessionRuntime, resolve_resume_target,
 };
 use clawin_integrations::{
     LoadedPluginCommand, LoadedPluginsSnapshot, LoadedSkill, LoadedSkillsSnapshot, McpManager,
@@ -290,24 +289,7 @@ impl LocalCommand for ResumeCommand {
         }
 
         let trimmed = invocation.args.trim();
-        let query = if looks_like_transcript_path(trimmed) {
-            ResumeQuery::Path(PathBuf::from(trimmed))
-        } else {
-            ResumeQuery::Exact(trimmed.to_owned())
-        };
-
-        let resolved = match query {
-            ResumeQuery::Path(path) => store.resolve_resume(runtime, ResumeQuery::Path(path))?,
-            ResumeQuery::Exact(value) => store
-                .resolve_resume(runtime, ResumeQuery::Exact(value.clone()))?
-                .or_else(|| {
-                    store
-                        .resolve_resume(runtime, ResumeQuery::Search(value))
-                        .ok()
-                        .flatten()
-                }),
-            _ => None,
-        };
+        let resolved = resolve_resume_target(runtime, store.as_ref(), trimmed)?;
 
         let Some(session) = resolved else {
             return Ok(CommandExecutionResult {
@@ -609,10 +591,6 @@ fn render_remote_control_status(status: BridgeStatusSnapshot) -> String {
     lines.join("\n")
 }
 
-fn looks_like_transcript_path(value: &str) -> bool {
-    value.ends_with(".jsonl") || value.contains('/') || value.contains('\\')
-}
-
 fn merged_skills(
     skills: &LoadedSkillsSnapshot,
     plugins: &LoadedPluginsSnapshot,
@@ -625,19 +603,18 @@ fn merged_skills(
 
 fn render_skills_listing(skills: &[LoadedSkill]) -> String {
     if skills.is_empty() {
-        return "Loaded skills:\n(no skills loaded)\n\n".to_owned();
+        return "Loaded skills:\n(no skills loaded)\n".to_owned();
     }
 
     let mut lines = vec!["Loaded skills:".to_owned()];
     for skill in skills {
         lines.push(format!(
             "- {} source={} description={}",
-            skill.command_name(),
+            skill.display_label(),
             skill.source_label(),
             skill.description()
         ));
     }
-    lines.push(String::new());
     format!("{}\n", lines.join("\n"))
 }
 
@@ -650,7 +627,7 @@ fn render_skill_command_output(skill: &LoadedSkill) -> String {
 
     format!(
         "Skill `{}` loaded from {}.\nDescription: {}\nAllowed tools: {}\nMarkdown:\n{}\n\n",
-        skill.command_name(),
+        skill.display_label(),
         skill
             .source_label()
             .replace("plugin(", "plugin ")

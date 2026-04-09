@@ -45,6 +45,14 @@ impl LoadedSkill {
         &self.name
     }
 
+    pub fn display_label(&self) -> String {
+        if self.name == self.command_name {
+            self.name.clone()
+        } else {
+            format!("{} (/{})", self.name, self.command_name)
+        }
+    }
+
     pub fn command_name(&self) -> &str {
         &self.command_name
     }
@@ -220,9 +228,16 @@ pub(crate) fn parse_skill_file(
     let tools = parse_tools(frontmatter.tools)?;
     let markdown = normalize_markdown_body(&markdown)
         .ok_or_else(|| "invalid skill markdown: markdown body is empty".to_owned())?;
+    let command_token = normalize_skill_command_token(&name).or_else(|| {
+        path.parent()
+            .and_then(Path::file_name)
+            .and_then(|name| normalize_skill_command_token(&name.to_string_lossy()))
+    });
+    let command_token = command_token
+        .ok_or_else(|| "invalid skill frontmatter: unable to derive command token".to_owned())?;
     let command_name = match plugin_id {
-        Some(plugin_id) => format!("{plugin_id}:{name}"),
-        None => name.clone(),
+        Some(plugin_id) => format!("{plugin_id}:{command_token}"),
+        None => command_token,
     };
     let origin_label = match plugin_id {
         Some(plugin_id) => format!("plugin:{plugin_id}"),
@@ -329,5 +344,43 @@ pub(crate) fn normalize_markdown_body(markdown: &str) -> Option<String> {
         None
     } else {
         Some(trimmed.to_owned())
+    }
+}
+
+fn normalize_skill_command_token(value: &str) -> Option<String> {
+    let mut normalized = String::new();
+    let mut previous_was_separator = false;
+
+    for character in value.chars() {
+        if character.is_ascii_alphanumeric() {
+            normalized.push(character.to_ascii_lowercase());
+            previous_was_separator = false;
+            continue;
+        }
+
+        if character == '-' || character == '_' || character.is_whitespace() {
+            if normalized.is_empty() || previous_was_separator {
+                continue;
+            }
+            normalized.push(if character == '_' { '_' } else { '-' });
+            previous_was_separator = true;
+            continue;
+        }
+
+        if normalized.is_empty() || previous_was_separator {
+            continue;
+        }
+        normalized.push('-');
+        previous_was_separator = true;
+    }
+
+    while normalized.ends_with(['-', '_']) {
+        normalized.pop();
+    }
+
+    if normalized.is_empty() {
+        None
+    } else {
+        Some(normalized)
     }
 }

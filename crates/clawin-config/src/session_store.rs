@@ -39,7 +39,7 @@ where
 
     /// Initialize a new session transcript file with a stable header entry.
     pub fn initialize_session(&self, runtime: &SessionRuntime) -> ClawinResult<()> {
-        let transcript_path = self.transcript_path(runtime);
+        let transcript_path = self.ensure_transcript_path(runtime);
         self.ensure_parent_dir(&transcript_path)?;
         let header = self.session_header(runtime);
         fs::write(&transcript_path, format!("{}\n", serialize_entry(&header)?)).map_err(|error| {
@@ -156,7 +156,7 @@ where
     }
 
     fn append_entry(&self, runtime: &SessionRuntime, entry: &SessionEntry) -> ClawinResult<()> {
-        let transcript_path = self.transcript_path(runtime);
+        let transcript_path = self.ensure_transcript_path(runtime);
         self.ensure_parent_dir(&transcript_path)?;
         if !transcript_path.exists() {
             let header = self.session_header(runtime);
@@ -189,9 +189,20 @@ where
         })
     }
 
-    fn transcript_path(&self, runtime: &SessionRuntime) -> PathBuf {
-        self.session_project_directory(runtime.active_project_root())
-            .join(format!("{}.jsonl", runtime.session_id().as_str()))
+    fn ensure_transcript_path(&self, runtime: &SessionRuntime) -> PathBuf {
+        if let Some(path) = runtime.session_transcript_path() {
+            return path;
+        }
+
+        let path = self
+            .default_transcript_path(runtime.active_project_root(), runtime.session_id().as_str());
+        runtime.set_session_transcript_path(path.clone());
+        path
+    }
+
+    fn default_transcript_path(&self, active_project_root: PathBuf, session_id: &str) -> PathBuf {
+        self.session_project_directory(active_project_root)
+            .join(format!("{session_id}.jsonl"))
     }
 
     fn session_project_directory(&self, active_project_root: PathBuf) -> PathBuf {

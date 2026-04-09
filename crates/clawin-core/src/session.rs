@@ -95,6 +95,31 @@ pub trait SessionStore: Send + Sync {
     ) -> ClawinResult<Option<RestoredSession>>;
 }
 
+/// Return whether the token should be treated as a transcript path.
+pub fn looks_like_transcript_path(value: &str) -> bool {
+    value.ends_with(".jsonl") || value.contains('/') || value.contains('\\')
+}
+
+/// Resolve a resume token using the shared exact-then-search semantics.
+pub fn resolve_resume_target<S>(
+    runtime: &SessionRuntime,
+    store: &S,
+    token: &str,
+) -> ClawinResult<Option<RestoredSession>>
+where
+    S: SessionStore + ?Sized,
+{
+    if looks_like_transcript_path(token) {
+        return store.resolve_resume(runtime, ResumeQuery::Path(PathBuf::from(token)));
+    }
+
+    if let Some(session) = store.resolve_resume(runtime, ResumeQuery::Exact(token.to_owned()))? {
+        return Ok(Some(session));
+    }
+
+    store.resolve_resume(runtime, ResumeQuery::Search(token.to_owned()))
+}
+
 /// Stable exit actions for the `ExitWorktree` tool.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

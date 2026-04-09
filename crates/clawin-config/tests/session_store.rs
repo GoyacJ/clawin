@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use clawin_config::{JsonlSessionStore, load_startup_config};
 use clawin_core::{
-    ConversationMessage, PermissionMode, ResumeInterruptionState, ResumeQuery, RuntimeCapabilities,
-    SessionId, SessionRuntime,
+    ConversationMessage, PermissionMode, PersistedWorktreeSession, ResumeInterruptionState,
+    ResumeQuery, RuntimeCapabilities, SessionId, SessionRuntime,
 };
 use clawin_platform::{FakeGitWorktreeAdapter, PathPolicy};
 use tempfile::TempDir;
@@ -168,6 +168,94 @@ fn lists_same_repo_worktree_sessions_in_recent_order() {
     assert_eq!(previews[0].session_id.as_str(), "worktree-session");
     assert_eq!(previews[0].last_prompt.as_deref(), Some("worktree prompt"));
     assert_eq!(previews[1].session_id.as_str(), "root-session");
+}
+
+#[test]
+fn keeps_single_transcript_file_when_session_enters_worktree() {
+    let harness = SessionHarness::new();
+    let worktree_dir = harness.project_dir().join(".clawin/worktrees/feature-a");
+    fs::create_dir_all(&worktree_dir).expect("worktree dir should exist");
+
+    let policy = TestPathPolicy::new(harness.home_dir());
+    let config = load_startup_config(harness.project_dir(), &policy).expect("config should load");
+    let git = Arc::new(FakeGitWorktreeAdapter::new());
+    git.register_repository(
+        config.paths().project_root().to_path_buf(),
+        vec![
+            config.paths().project_root().to_path_buf(),
+            worktree_dir.clone(),
+        ],
+    );
+    let store = JsonlSessionStore::new(config.paths().clone(), policy.clone(), git);
+
+    let runtime = SessionRuntime::new(
+        SessionId::from_owned("session-c"),
+        RuntimeCapabilities::new(false, false),
+        harness.project_dir(),
+        config.paths().project_root().to_path_buf(),
+        PermissionMode::Default,
+    );
+
+    let root_transcript = config
+        .paths()
+        .projects_root()
+        .join(policy.sanitize_for_session_dir(config.paths().project_root()))
+        .join("session-c.jsonl");
+    let worktree_transcript = config
+        .paths()
+        .projects_root()
+        .join(policy.sanitize_for_session_dir(&worktree_dir))
+        .join("session-c.jsonl");
+
+    store
+        .initialize_session(&runtime)
+        .expect("root transcript should initialize");
+    store
+        .append_message(
+            &runtime,
+            &ConversationMessage::User {
+                content: "hello".to_owned(),
+            },
+        )
+        .expect("root message should persist");
+
+    runtime.set_active_worktree(Some(PersistedWorktreeSession::new(
+        config.paths().project_root().to_path_buf(),
+        worktree_dir.clone(),
+        Some("worktree-feature-a".to_owned()),
+        true,
+    )));
+    runtime.set_active_project_root(worktree_dir.clone());
+    store
+        .save_worktree_state(&runtime, runtime.active_worktree().as_ref())
+        .expect("worktree state should persist");
+    store
+        .append_message(
+            &runtime,
+            &ConversationMessage::Assistant {
+                content: "continued".to_owned(),
+            },
+        )
+        .expect("continued message should persist");
+
+    assert!(root_transcript.exists());
+    assert!(
+        !worktree_transcript.exists(),
+        "same session should not create a second transcript inside the worktree directory"
+    );
+
+    let previews = store
+        .list_recent_sessions(&runtime)
+        .expect("recent sessions should load");
+    assert_eq!(previews.len(), 1);
+    assert_eq!(previews[0].transcript_path, root_transcript);
+
+    let restored = store
+        .resolve_resume(&runtime, ResumeQuery::Exact("session-c".to_owned()))
+        .expect("resume query should succeed")
+        .expect("session should be found");
+    assert_eq!(restored.transcript_path, root_transcript);
+    assert_eq!(restored.active_project_root, worktree_dir);
 }
 
 struct SessionHarness {

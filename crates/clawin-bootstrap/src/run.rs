@@ -12,7 +12,7 @@ use clawin_core::{
     BridgePointer, CancellationFlag, ClawinResult, ConversationRequest, EngineEvent, EngineOutcome,
     ModelDriver, ModelDriverFuture, ModelRequest, PassthroughPermissionResolver, PermissionMode,
     RestoredSession, ResumeQuery, RuntimeCapabilities, SessionId, SessionRuntime, SessionStore,
-    TurnLoopConfig, WorktreeManager,
+    TurnLoopConfig, WorktreeManager, looks_like_transcript_path, resolve_resume_target,
 };
 use clawin_engine::{ConversationEngine, EngineServices};
 use clawin_integrations::{
@@ -681,25 +681,16 @@ fn resolve_resume_token<S>(
 where
     S: SessionStore,
 {
-    if looks_like_transcript_path(token) {
-        let session = store.resolve_resume(runtime, ResumeQuery::Path(PathBuf::from(token)))?;
-        return session
-            .ok_or_else(|| clawin_core::ClawinError::InvalidConfiguration {
+    match resolve_resume_target(runtime, store, token)? {
+        Some(session) => Ok(Some(session)),
+        None if looks_like_transcript_path(token) => {
+            Err(clawin_core::ClawinError::InvalidConfiguration {
                 message: format!("no session transcript found at `{token}`"),
             })
-            .map(Some);
-    }
-
-    match store.resolve_resume(runtime, ResumeQuery::Exact(token.to_owned())) {
-        Ok(Some(session)) => Ok(Some(session)),
-        Ok(None) => match store.resolve_resume(runtime, ResumeQuery::Search(token.to_owned())) {
-            Ok(Some(session)) => Ok(Some(session)),
-            Ok(None) => Err(clawin_core::ClawinError::InvalidConfiguration {
-                message: format!("no session matched `{token}`"),
-            }),
-            Err(error) => Err(error),
-        },
-        Err(error) => Err(error),
+        }
+        None => Err(clawin_core::ClawinError::InvalidConfiguration {
+            message: format!("no session matched `{token}`"),
+        }),
     }
 }
 
@@ -721,6 +712,7 @@ fn build_restored_runtime(
     runtime.set_active_project_root(restored.active_project_root.clone());
     runtime.set_current_cwd(restored.active_project_root.clone());
     runtime.set_active_worktree(restored.worktree_state.clone());
+    runtime.set_session_transcript_path(restored.transcript_path.clone());
     runtime.set_session_store(session_store);
     runtime.set_worktree_manager(worktree_manager);
     runtime
@@ -753,10 +745,6 @@ fn persist_transcript_delta(
         store.append_message(runtime, message)?;
     }
     Ok(())
-}
-
-fn looks_like_transcript_path(value: &str) -> bool {
-    value.ends_with(".jsonl") || value.contains(std::path::MAIN_SEPARATOR)
 }
 
 fn resolve_bridge_continue_pointer() -> Result<BridgePointer> {

@@ -52,6 +52,7 @@ struct SessionRuntimeState {
     active_project_root: PathBuf,
     current_cwd: PathBuf,
     active_worktree: Option<PersistedWorktreeSession>,
+    session_transcript_path: Option<PathBuf>,
 }
 
 impl SessionRuntime {
@@ -74,6 +75,7 @@ impl SessionRuntime {
                 active_project_root: project_root,
                 current_cwd: original_cwd,
                 active_worktree: None,
+                session_transcript_path: None,
             })),
             services: Arc::new(RwLock::new(SessionServices::default())),
         }
@@ -138,6 +140,15 @@ impl SessionRuntime {
             .read()
             .expect("session runtime state lock should be available")
             .active_worktree
+            .clone()
+    }
+
+    /// Read the fixed transcript path for the current session, if it has been initialized.
+    pub fn session_transcript_path(&self) -> Option<PathBuf> {
+        self.state
+            .read()
+            .expect("session runtime state lock should be available")
+            .session_transcript_path
             .clone()
     }
 
@@ -206,6 +217,14 @@ impl SessionRuntime {
             .write()
             .expect("session runtime state lock should be available")
             .active_worktree = worktree;
+    }
+
+    /// Fix the transcript path for the current session.
+    pub fn set_session_transcript_path(&self, path: PathBuf) {
+        self.state
+            .write()
+            .expect("session runtime state lock should be available")
+            .session_transcript_path = Some(path);
     }
 
     /// Replace the session store service for this runtime.
@@ -277,6 +296,7 @@ impl std::fmt::Debug for SessionRuntime {
             .field("active_project_root", &state.active_project_root)
             .field("current_cwd", &state.current_cwd)
             .field("active_worktree", &state.active_worktree)
+            .field("session_transcript_path", &state.session_transcript_path)
             .field("has_session_store", &self.session_store().is_some())
             .field("has_worktree_manager", &self.worktree_manager().is_some())
             .field("has_bridge_controller", &self.bridge_controller().is_some())

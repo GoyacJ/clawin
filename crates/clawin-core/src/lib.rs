@@ -30,4 +30,5 @@ pub use runtime::{RuntimeCapabilities, SessionRuntime};
 pub use session::{
     CommandEffect, PersistedWorktreeSession, RestoredSession, ResumeInterruptionState, ResumeQuery,
     SessionPreview, SessionServices, SessionStore, WorktreeExitAction, WorktreeManager,
+    looks_like_transcript_path, resolve_resume_target,
 };

@@ -1,4 +1,3 @@
 Loaded skills:
-- demo-plugin:audit source=plugin(demo-plugin) description=Audit deployment state
+- audit (/demo-plugin:audit) source=plugin(demo-plugin) description=Audit deployment state
 - review-rust source=project description=Project override review skill
-

@@ -5,9 +5,9 @@ use std::sync::Arc;
 
 use clawin_commands::builtin_command_registry;
 use clawin_core::{
-    ClawinResult, CommandEffect, ConversationMessage, PersistedWorktreeSession, RestoredSession,
-    ResumeInterruptionState, ResumeQuery, RuntimeCapabilities, SessionId, SessionPreview,
-    SessionRuntime, SessionStore, WorktreeExitAction, WorktreeManager,
+    ClawinError, ClawinResult, CommandEffect, ConversationMessage, PersistedWorktreeSession,
+    RestoredSession, ResumeInterruptionState, ResumeQuery, RuntimeCapabilities, SessionId,
+    SessionPreview, SessionRuntime, SessionStore, WorktreeExitAction, WorktreeManager,
 };
 
 #[test]
@@ -71,6 +71,44 @@ fn continue_alias_returns_resume_effect_for_exact_match() {
     assert!(result.output.contains("session-456"));
 }
 
+#[test]
+fn resume_surfaces_ambiguous_search_errors() {
+    let registry = builtin_command_registry();
+    let runtime = runtime(Arc::new(FakeSessionStore::with_query_results(
+        QueryResult::ok(None),
+        QueryResult::err("resume query matched multiple sessions"),
+    )));
+
+    let error = registry
+        .execute("/resume session-ambiguous", &runtime)
+        .expect_err("ambiguous search should surface an error");
+
+    assert!(matches!(
+        error,
+        ClawinError::InvalidConfiguration { message }
+        if message.contains("multiple sessions")
+    ));
+}
+
+#[test]
+fn resume_surfaces_invalid_transcript_errors() {
+    let registry = builtin_command_registry();
+    let runtime = runtime(Arc::new(FakeSessionStore::with_query_results(
+        QueryResult::ok(None),
+        QueryResult::err("failed to read session transcript /tmp/bad.jsonl"),
+    )));
+
+    let error = registry
+        .execute("/resume session-bad", &runtime)
+        .expect_err("invalid transcript should surface an error");
+
+    assert!(matches!(
+        error,
+        ClawinError::InvalidConfiguration { message }
+        if message.contains("failed to read session transcript")
+    ));
+}
+
 fn runtime(store: Arc<dyn SessionStore>) -> SessionRuntime {
     SessionRuntime::new(
         SessionId::from_static("commands-resume"),
@@ -86,21 +124,39 @@ fn runtime(store: Arc<dyn SessionStore>) -> SessionRuntime {
 #[derive(Debug)]
 struct FakeSessionStore {
     recent: Vec<SessionPreview>,
-    restored: Option<RestoredSession>,
+    exact: QueryResult<Option<RestoredSession>>,
+    search: QueryResult<Option<RestoredSession>>,
+    path: QueryResult<Option<RestoredSession>>,
 }
 
 impl FakeSessionStore {
     fn with_recent(recent: Vec<SessionPreview>) -> Self {
         Self {
             recent,
-            restored: None,
+            exact: QueryResult::ok(None),
+            search: QueryResult::ok(None),
+            path: QueryResult::ok(None),
         }
     }
 
     fn with_restored(restored: RestoredSession) -> Self {
         Self {
             recent: Vec::new(),
-            restored: Some(restored),
+            exact: QueryResult::ok(Some(restored)),
+            search: QueryResult::ok(None),
+            path: QueryResult::ok(None),
+        }
+    }
+
+    fn with_query_results(
+        exact: QueryResult<Option<RestoredSession>>,
+        search: QueryResult<Option<RestoredSession>>,
+    ) -> Self {
+        Self {
+            recent: Vec::new(),
+            exact,
+            search,
+            path: QueryResult::ok(None),
         }
     }
 }
@@ -137,9 +193,42 @@ impl SessionStore for FakeSessionStore {
     fn resolve_resume(
         &self,
         _runtime: &SessionRuntime,
-        _query: ResumeQuery,
+        query: ResumeQuery,
     ) -> ClawinResult<Option<RestoredSession>> {
-        Ok(self.restored.clone())
+        match query {
+            ResumeQuery::Continue => Ok(None),
+            ResumeQuery::Exact(_) => self.exact.resolve(),
+            ResumeQuery::Search(_) => self.search.resolve(),
+            ResumeQuery::Path(_) => self.path.resolve(),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct QueryResult<T> {
+    value: Result<T, String>,
+}
+
+impl<T> QueryResult<T> {
+    fn ok(value: T) -> Self {
+        Self { value: Ok(value) }
+    }
+
+    fn err(message: impl Into<String>) -> Self {
+        Self {
+            value: Err(message.into()),
+        }
+    }
+}
+
+impl<T: Clone> QueryResult<T> {
+    fn resolve(&self) -> ClawinResult<T> {
+        match &self.value {
+            Ok(value) => Ok(value.clone()),
+            Err(message) => Err(ClawinError::InvalidConfiguration {
+                message: message.clone(),
+            }),
+        }
     }
 }
 

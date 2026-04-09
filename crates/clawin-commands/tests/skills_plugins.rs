@@ -104,6 +104,73 @@ Audit deployment state.
     );
 }
 
+#[test]
+fn executes_normalized_skill_commands_and_keeps_display_name() {
+    let harness = Harness::new();
+    harness.write_skill(
+        SkillLocation::Project,
+        "code-review",
+        r#"---
+name: Code Review
+description: Review staged code carefully
+tools:
+  - file_read
+---
+# Code Review
+Review staged code carefully.
+"#,
+    );
+    harness.write_plugin_manifest(
+        "demo-plugin",
+        serde_json::json!({
+            "name": "demo-plugin",
+            "description": "Demo plugin",
+            "skills": ["./skills"]
+        }),
+    );
+    harness.write_plugin_skill(
+        "demo-plugin",
+        "release-audit",
+        r#"---
+name: Release Audit
+description: Audit the release state
+tools:
+  - file_read
+---
+# Release Audit
+Audit the release state.
+"#,
+    );
+
+    let config = harness.load_config();
+    let skills = load_skills_snapshot(&config);
+    let plugins = load_plugins_snapshot(&config);
+    let manager = Arc::new(
+        McpManager::from_loaded_config(&config, Arc::new(FakeProcessSpawner::default()))
+            .expect("empty manager should assemble"),
+    );
+    let registry = builtin_command_registry_with_extensions(manager, skills, plugins);
+
+    let skills_listing = registry
+        .execute("/skills", &runtime(&harness.project_dir))
+        .expect("/skills should render normalized skill labels");
+    assert_eq!(
+        skills_listing.output,
+        include_str!("fixtures/skills_normalized_output.txt")
+    );
+
+    let result = registry
+        .execute("/code-review", &runtime(&harness.project_dir))
+        .expect("normalized skill command should execute");
+    assert_eq!(result.command_name, "code-review");
+    assert_eq!(
+        result.output,
+        include_str!("fixtures/skill_command_display_output.txt")
+    );
+
+    assert!(registry.spec("demo-plugin:release-audit").is_some());
+}
+
 struct Harness {
     _tempdir: TempDir,
     home_dir: PathBuf,
