@@ -35,6 +35,7 @@
 
 Phase 8E 起，`M8` 的发布门禁以 [release-checklist.md](/Users/goya/Repo/claude/clawin/docs/status/release-checklist.md) 为汇总真源。  
 在 release checklist 显式收口前，一级子系统即使局部证据增强，也不自动升为 `Parity Verified`。
+当前 release gate 已归档一轮本地 macOS fixed smoke 全通过结果；Linux/Windows 结果仍待 CI 归档，因此一级子系统状态继续保持 `Parity Pending`。
 
 | 子系统 | 当前结论 | 当前证据 | Phase 8 必补 | `M8` 后扩展项 |
 | --- | --- | --- | --- | --- |

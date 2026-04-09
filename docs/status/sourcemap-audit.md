@@ -3,15 +3,15 @@
 - 更新时间: 2026-04-09
 - 上游基线: Claude Code `2.1.88`
 - 参考语料: `docs/claude-code-sourcemap-main/restored-src/src/`
-- 当前判定: `M7` / `Phase 8E in progress`
+- 当前判定: `M7` / `Phase 8E: Release Gate Hardening`
 
 ## 审计结论
 
 当前仓库已经完成 `Phase 1` 到 `Phase 7` 的最小主链路闭环，并为所有一级子系统建立了上游入口映射、Rust 归属、集成测试与基础 CI。但这些证据目前仍不足以把仓库正式判定为 `M8 / Phase 8 complete`：
 
 - 一级子系统仍全部停留在 `Parity Pending`，尚未形成 `Parity Verified` 所需的完整证据包。
-- 现有 CI 只覆盖 `cargo fmt/clippy/test/build` 与三平台 `cargo build + clawin --help` smoke，尚不足以证明所有公开行为都已完成三平台对标验证。
-- 仓库内尚无发布检查表，因而不能宣称“发布准备完成”。
+- `rust-ci.yml` 已升级为 Linux/macOS/Windows 固定 smoke matrix，且 2026-04-09 本地 macOS 已跑通全部 6 个固定 smoke；但 Linux/Windows 结果仍未形成可追溯 release archive。
+- [release-checklist.md](/Users/goya/Repo/claude/clawin/docs/status/release-checklist.md) 已建立并成为 `M8` 门禁真源，但当前仍处于 `Not Ready for M8`。
 - 多个子系统当前是“V1 最小闭环已达成”的状态，而不是“上游公开能力已充分核验”的状态。
 
 因此，本轮审计后的正式结论是：
@@ -52,14 +52,14 @@
 在当前审计结论下，以下事项仍阻止仓库切换到 `M8`：
 
 1. 所有一级子系统仍停留在 `Parity Pending`，没有一个被正式判定为 `Parity Verified`。
-2. 缺少覆盖所有一级子系统的三平台证据说明；现有 CI 只证明构建和 `--help` smoke。
-3. 缺少发布检查表，因此不能宣称“发布准备完成”。
-4. 根入口文档此前仍有阶段口径漂移，需要本轮审计一起收口。
+2. 三平台证据目前只完成了本地 macOS fixed smoke 归档；Linux/Windows 结果仍未写回 release gate 证据。
+3. 发布检查表虽已建立，但仍有 smoke matrix 与一级子系统正式判定两项总门禁未收口。
+4. 多个一级子系统虽然已有测试与 fixture 基线，但仍缺 release-level sourcemap 摘录、失败路径说明或平台结论，不能直接升为 `Parity Verified`。
 
 ## Phase 8E 当前判定
 
 - 当前一级子系统仍全部维持 `Parity Pending`，没有条目因为局部 fixture 基线而自动升到 `Parity Verified`。
-- 当前本地质量门禁已具备 release baseline，但三平台 smoke 结果仍待 CI matrix 产出。
+- 当前本地质量门禁已具备 release baseline，固定 smoke 组也已在本地 macOS 跑通；但 Linux/Windows 结果仍待 CI matrix 归档。
 - `M8` 是否可切换，统一由 [release-checklist.md](/Users/goya/Repo/claude/clawin/docs/status/release-checklist.md) 收口判断，而不是由单个 phase 的实现完成度决定。
 
 ## Phase 8 必须补齐
@@ -70,7 +70,7 @@
   - 失败路径
   - golden fixture 或等价快照
   - 三平台验证结论
-- 新增并维护发布检查表，明确 `M8` 需要的门禁项。
+- 继续维护并收口发布检查表，明确 `M8` 需要的门禁项。
 - 把 `status`、`roadmap`、`parity matrix`、根 `README` 的当前阶段口径收敛为一致表达。
 
 ## `M8` 后扩展项
