@@ -27,6 +27,7 @@ Review the Rust changes carefully.
 "#,
     );
     harness.write_plugin_manifest(
+        PluginLocation::User,
         "demo-plugin",
         serde_json::json!({
             "name": "demo-plugin",
@@ -40,6 +41,7 @@ Review the Rust changes carefully.
         }),
     );
     harness.write_plugin_skill(
+        PluginLocation::User,
         "demo-plugin",
         "audit",
         r#"---
@@ -52,7 +54,7 @@ tools:
 Audit deployment state.
 "#,
     );
-    harness.write_raw_plugin_file("broken-plugin", "plugin.json", b"{}");
+    harness.write_raw_plugin_file(PluginLocation::User, "broken-plugin", "plugin.json", b"{}");
 
     let config = harness.load_config();
     let skills = load_skills_snapshot(&config);
@@ -121,6 +123,7 @@ Review staged code carefully.
 "#,
     );
     harness.write_plugin_manifest(
+        PluginLocation::User,
         "demo-plugin",
         serde_json::json!({
             "name": "demo-plugin",
@@ -129,6 +132,7 @@ Review staged code carefully.
         }),
     );
     harness.write_plugin_skill(
+        PluginLocation::User,
         "demo-plugin",
         "release-audit",
         r#"---
@@ -171,6 +175,52 @@ Audit the release state.
     assert!(registry.spec("demo-plugin:release-audit").is_some());
 }
 
+#[test]
+fn renders_plugin_precedence_and_ignored_failure_reason() {
+    let harness = Harness::new();
+    harness.write_raw_plugin_file(PluginLocation::User, "demo-plugin", "plugin.json", b"{}");
+    harness.write_plugin_manifest(
+        PluginLocation::Project,
+        "demo-plugin",
+        serde_json::json!({
+            "name": "demo-plugin",
+            "description": "Project plugin override",
+            "commands": ["./commands"]
+        }),
+    );
+    harness.write_plugin_command(
+        PluginLocation::Project,
+        "demo-plugin",
+        "deploy",
+        r#"---
+description: Deploy from project plugin
+---
+# Deploy
+Deploy from the project plugin.
+"#,
+    );
+    harness.write_raw_plugin_file(PluginLocation::User, "broken-plugin", "plugin.json", b"{}");
+
+    let config = harness.load_config();
+    let skills = load_skills_snapshot(&config);
+    let plugins = load_plugins_snapshot(&config);
+    let manager = Arc::new(
+        McpManager::from_loaded_config(&config, Arc::new(FakeProcessSpawner::default()))
+            .expect("empty manager should assemble"),
+    );
+    let registry = builtin_command_registry_with_extensions(manager, skills, plugins);
+
+    let plugin_output = registry
+        .execute("/plugin", &runtime(&harness.project_dir))
+        .expect("/plugin should render precedence and ignored failure details");
+    assert_eq!(
+        plugin_output.output,
+        include_str!("fixtures/plugin_precedence_output.txt")
+    );
+
+    assert!(registry.spec("demo-plugin:deploy").is_some());
+}
+
 struct Harness {
     _tempdir: TempDir,
     home_dir: PathBuf,
@@ -210,8 +260,13 @@ impl Harness {
         fs::write(path.join("SKILL.md"), content).expect("skill file should write");
     }
 
-    fn write_plugin_manifest(&self, name: &str, value: serde_json::Value) {
-        let root = self.home_dir.join(".clawin/plugins").join(name);
+    fn write_plugin_manifest(
+        &self,
+        location: PluginLocation,
+        name: &str,
+        value: serde_json::Value,
+    ) {
+        let root = self.plugin_root(location, name);
         fs::create_dir_all(&root).expect("plugin root should exist");
         fs::write(
             root.join("plugin.json"),
@@ -220,31 +275,66 @@ impl Harness {
         .expect("manifest should write");
     }
 
-    fn write_plugin_skill(&self, plugin_name: &str, skill_name: &str, content: &str) {
+    fn write_plugin_skill(
+        &self,
+        location: PluginLocation,
+        plugin_name: &str,
+        skill_name: &str,
+        content: &str,
+    ) {
         let path = self
-            .home_dir
-            .join(".clawin/plugins")
-            .join(plugin_name)
+            .plugin_root(location, plugin_name)
             .join("skills")
             .join(skill_name);
         fs::create_dir_all(&path).expect("plugin skill dir should exist");
         fs::write(path.join("SKILL.md"), content).expect("plugin skill should write");
     }
 
-    fn write_raw_plugin_file(&self, plugin_name: &str, relative_path: &str, content: &[u8]) {
+    fn write_plugin_command(
+        &self,
+        location: PluginLocation,
+        plugin_name: &str,
+        command_name: &str,
+        content: &str,
+    ) {
         let path = self
-            .home_dir
-            .join(".clawin/plugins")
-            .join(plugin_name)
-            .join(relative_path);
+            .plugin_root(location, plugin_name)
+            .join("commands")
+            .join(format!("{command_name}.md"));
+        fs::create_dir_all(path.parent().expect("parent should exist"))
+            .expect("parent dir should exist");
+        fs::write(path, content).expect("plugin command should write");
+    }
+
+    fn write_raw_plugin_file(
+        &self,
+        location: PluginLocation,
+        plugin_name: &str,
+        relative_path: &str,
+        content: &[u8],
+    ) {
+        let path = self.plugin_root(location, plugin_name).join(relative_path);
         fs::create_dir_all(path.parent().expect("parent should exist"))
             .expect("parent dir should exist");
         fs::write(path, content).expect("raw plugin file should write");
+    }
+
+    fn plugin_root(&self, location: PluginLocation, name: &str) -> PathBuf {
+        match location {
+            PluginLocation::User => self.home_dir.join(".clawin/plugins").join(name),
+            PluginLocation::Project => self.project_dir.join(".clawin/plugins").join(name),
+        }
     }
 }
 
 #[derive(Clone, Copy)]
 enum SkillLocation {
+    Project,
+}
+
+#[derive(Clone, Copy)]
+enum PluginLocation {
+    User,
     Project,
 }
 

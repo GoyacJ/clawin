@@ -178,6 +178,13 @@ impl LoadedPlugin {
     pub fn errors(&self) -> &[String] {
         &self.errors
     }
+
+    pub fn primary_error(&self) -> Option<&str> {
+        match self.status {
+            PluginRuntimeStatus::Ignored => self.errors.last().map(String::as_str),
+            _ => self.errors.first().map(String::as_str),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]

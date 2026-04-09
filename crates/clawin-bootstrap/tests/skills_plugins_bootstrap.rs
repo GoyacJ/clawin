@@ -121,6 +121,59 @@ Audit deployment state.
     assert!(plugin_output.output.contains("failed"));
 }
 
+#[test]
+fn bootstrap_starts_with_project_plugin_override_and_surfaces_ignored_user_entry() {
+    let harness = Harness::new();
+    harness.write_raw_plugin_file(PluginLocation::User, "demo-plugin", "plugin.json", b"{}");
+    harness.write_plugin_manifest(
+        PluginLocation::Project,
+        "demo-plugin",
+        json!({
+            "name": "demo-plugin",
+            "description": "Project plugin override",
+            "commands": ["./commands"]
+        }),
+    );
+    harness.write_plugin_command(
+        PluginLocation::Project,
+        "demo-plugin",
+        "deploy",
+        r#"---
+description: Deploy from project plugin
+---
+# Deploy
+Deploy from the project plugin.
+"#,
+    );
+
+    let session = bootstrap_session_from_with_process_spawner(
+        harness.project_dir.clone(),
+        StaticTerminalCapabilities::new(false, false),
+        TestPathPolicy {
+            home_dir: harness.home_dir.clone(),
+        },
+        Arc::new(FakeProcessSpawner::default()),
+    )
+    .expect("bootstrap should keep project plugin precedence without blocking startup");
+
+    assert!(session.commands().spec("demo-plugin:deploy").is_some());
+
+    let plugin_output = session
+        .commands()
+        .execute("/plugin", session.runtime())
+        .expect("/plugin should render");
+    assert!(
+        plugin_output
+            .output
+            .contains("scope=user status=ignored commands=0 skills=0 mcp_servers=0 error=overridden by higher-precedence project plugin")
+    );
+    assert!(
+        plugin_output
+            .output
+            .contains("scope=project status=loaded commands=1 skills=0 mcp_servers=0")
+    );
+}
+
 struct Harness {
     _tempdir: TempDir,
     home_dir: PathBuf,
@@ -210,6 +263,7 @@ impl Harness {
     fn plugin_root(&self, location: PluginLocation, name: &str) -> PathBuf {
         match location {
             PluginLocation::User => self.home_dir.join(".clawin/plugins").join(name),
+            PluginLocation::Project => self.project_dir.join(".clawin/plugins").join(name),
         }
     }
 }
@@ -222,6 +276,7 @@ enum SkillLocation {
 #[derive(Clone, Copy)]
 enum PluginLocation {
     User,
+    Project,
 }
 
 #[derive(Clone, Debug)]

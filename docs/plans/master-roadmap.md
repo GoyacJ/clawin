@@ -2,7 +2,7 @@
 
 - 状态: Active
 - 基线日期: 2026-04-09
-- 当前进度: `M7` / `Phase 7 complete`
+- 当前进度: `M7` / `Phase 8 in progress`
 
 ## 总目标
 
@@ -99,6 +99,12 @@
   - 完成 golden fixture、三平台矩阵、差异审查、发布检查表
 - 退出条件
   - 满足 V1 发布门槛
+
+当前 Phase 8 的执行口径固定为：
+
+- 先以 `docs/claude-code-sourcemap-main/restored-src/src/` 重新对照现有一级子系统，确认哪些最小实现已经足以构成 V1 闭环，哪些仍只是样本实现
+- 在一级子系统没有形成 `Parity Verified` 或 `Accepted Difference` 证据前，仓库继续保持 `M7`
+- 只有在三平台验证证据、golden / smoke / failure-path 证据和发布检查表同时齐备后，才允许切换到 `M8`
 
 ## 里程碑
 

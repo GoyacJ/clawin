@@ -26,10 +26,26 @@
 | Conversation Engine | `src/QueryEngine.ts`, `src/query.ts`, `src/query/*` | `clawin-engine` | `Parity Pending` | transcript state、`submit_message` turn loop、typed streaming events、`/help` fast-path、`file_read` tool continuation、token budget continuation、deterministic compaction、cancel path、fake-driver end-to-end acceptance | `DIFF-2026-001` | 真实 provider/API client、更多 query deps 和完整 compact 语义仍待后续阶段 |
 | TUI / REPL / Screens | `src/ink/*`, `src/components/*`, `src/screens/*`, `src/keybindings/*` | `clawin-ui` + `clawin-platform` | `Parity Pending` | interactive no-arg 路由、REPL slash command、unavailable-driver prompt path、ctrl-c cancel/exit、resize、TUI snapshot acceptance | 允许 Rust TUI 技术栈重写实现，行为不变 | 三平台终端能力和渲染细节差异大，当前仍未覆盖完整 scrollback/history |
 | MCP | `src/services/mcp/*`, `src/tools/MCPTool/*`, `src/tools/ListMcpResourcesTool/*`, `src/tools/ReadMcpResourceTool/*` | `clawin-integrations` + `clawin-tools` + `clawin-bootstrap` + `clawin-commands` | `Parity Pending` | `mcpServers` merge、stdio connect/init、`/mcp list`、`/mcp reload`、MCP dynamic tool naming、`list_mcp_resources`、`read_mcp_resource`、bootstrap + engine + REPL orchestration | `DIFF-2026-001` | 当前仅覆盖 stdio transport；http/sse/ws/oauth、通知驱动刷新与 prompts/skills/plugins 仍未进入本阶段 |
-| Skills / Plugins | `src/skills/*`, `src/plugins/*`, `src/utils/markdownConfigLoader.ts` | `clawin-integrations` + `clawin-commands` + `clawin-bootstrap` | `Parity Pending` | skills 目录发现、frontmatter parsing、project/user 覆盖、dynamic skill command export、display name 与 normalized slash-command token 分离、plugin manifest loading、plugin-contributed command loading、plugin-contributed MCP merge、`/skills`、`/plugin`、non-blocking plugin failure path、bootstrap + engine + REPL orchestration | `DIFF-2026-001` | 当前仅覆盖本地运行时加载闭环；marketplace/install/update/uninstall、templates/workflows/output styles 仍待后续阶段 |
+| Skills / Plugins | `src/skills/loadSkillsDir.ts`, `src/skills/bundledSkills.ts`, `src/plugins/*`, `src/utils/markdownConfigLoader.ts` | `clawin-integrations` + `clawin-commands` + `clawin-bootstrap` | `Parity Pending` | skills 目录发现、frontmatter parsing、project/user 覆盖、dynamic skill command export、display name 与 normalized slash-command token 分离、plugin manifest loading、plugin-contributed command loading、plugin-contributed MCP merge、`/skills`、`/plugin`、non-blocking plugin failure path、bootstrap + engine + REPL orchestration | `DIFF-2026-001` | 当前仅覆盖本地运行时加载闭环；marketplace/install/update/uninstall、templates/workflows/output styles 仍待后续阶段 |
 | Worktree / Session / Resume | `src/utils/worktree.ts`, `src/utils/sessionStorage.ts`, `src/utils/conversationRecovery.ts`, `src/setup.ts` | `clawin-bootstrap` + `clawin-config` + `clawin-core` + `clawin-engine` + `clawin-tools` + `clawin-ui` + `clawin-platform` | `Parity Pending` | session path layout、JSONL transcript、单 session transcript 真源在 worktree 生命周期内保持稳定、`/resume` / `/continue`、CLI `--continue` / `--resume`、same-repo worktree search、`EnterWorktree` / `ExitWorktree`、restore failure path、restored runtime orchestration | `DIFF-2026-001` | transcript 与 worktree 路径切换仍有跨目录持久化细节待继续硬化，tmux/remote 相关恢复行为仍待后续阶段 |
 | Structured IO / Headless | `src/cli/structuredIO.ts`, `src/cli/print.ts`, `src/entrypoints/sdk/controlSchemas.ts`, `src/entrypoints/sdk/coreSchemas.ts` | `clawin-core` + `clawin-bootstrap` + `clawin-tools` | `Parity Pending` | `--print`、prompt source 解析、`text/json/stream-json` 输出、stdin `stream-json` 协议、permission control request/response、interrupt、`--continue` / `--resume` in print mode、headless golden fixture | `DIFF-2026-001` | 当前仅覆盖本地 stdio JSON 与 headless 非交互链路；多客户端桥接、网络 transport 与 remote session 管理仍待 `Phase 7B2` |
 | Remote Control / Bridge | `src/remote/*`, `src/bridge/*`, `src/cli/transports/*`, `src/commands/bridge/*` | `clawin-integrations` + `clawin-bootstrap` + `clawin-ui` | `Parity Pending` | `remote-control` / `rc`、REPL `/remote-control` / `/rc`、bridge session、transport reconnect、remote resume / pointer recovery、bridge golden fixture | `DIFF-2026-001` | 当前默认 connector 仍为 unavailable；真实 backend/auth、多 session bridgeMain loop 与更完整多客户端协作仍待后续阶段 |
+
+## Phase 8 审计总览
+
+| 子系统 | 当前结论 | 当前证据 | Phase 8 必补 | `M8` 后扩展项 |
+| --- | --- | --- | --- | --- |
+| Bootstrap / Entrypoint | V1 启动最小闭环已达成，但仍是 `Parity Pending` | `crates/clawin/tests/cli_smoke.rs`、`crates/clawin-bootstrap/tests/interactive_session.rs`、`crates/clawin-bootstrap/tests/non_interactive_session.rs` | 补 startup 行为来源样本、golden 和三平台启动证据 | 更完整 startup side effects |
+| Config / Settings / Persistence | 读取、迁移与失败路径骨架可用，但仍属最小实现 | `crates/clawin-config/tests/startup_config.rs` | 补 settings 行为样本、平台路径结论与来源证据 | 更多上游字段与 merge 语义 |
+| Commands | 参考命令可用，但命令面对标仍不完整 | `crates/clawin-commands/tests/registry.rs`、`mcp.rs`、`resume.rs`、`skills_plugins.rs` | 固定 V1 命令边界并补 sourcemap / golden 证据 | 更多命令与动态来源 |
+| Tools | 参考工具闭环可用，但仍是样本实现 | `crates/clawin-tools/tests/file_read.rs`、`mcp.rs`、`worktree.rs`、`permission_resolver.rs` | 补当前纳入 V1 的工具结果 fixture、失败路径与来源证据 | 更多高副作用工具 |
+| Conversation Engine | 最小 turn loop 已达成，但并非完整 query 对标 | `crates/clawin-engine/tests/conversation_engine.rs` 与 fixtures | 补事件序列、失败路径与 V1 边界证据 | 真实 provider 与更多 query 语义 |
+| TUI / REPL / Screens | 最小 REPL 闭环已达成，但 UI 语义仍是精简版 | `crates/clawin-ui/tests/repl.rs`、`crates/clawin-platform/tests/terminal_session.rs` | 补 snapshot / 三平台终端证据与当前 UI 边界说明 | 更多 screen、history、scrollback |
+| MCP | stdio MCP 最小闭环已达成 | `crates/clawin-integrations/tests/mcp_manager.rs`、`fake_stdio_process.rs`、`crates/clawin-bootstrap/tests/mcp_bootstrap.rs`、`crates/clawin-tools/tests/mcp.rs` | 补 `/mcp`、resource tools、动态 tool 的来源样本与平台结论 | 更多 transport 与通知刷新 |
+| Skills / Plugins | 运行时加载和动态命令导出已可用，但仍是最小闭环 | `crates/clawin-integrations/tests/skills_plugins.rs`、`crates/clawin-commands/tests/skills_plugins.rs`、`crates/clawin-bootstrap/tests/skills_plugins_bootstrap.rs`、`crates/clawin-commands/tests/fixtures/skills_normalized_output.txt`、`skill_command_display_output.txt`、`plugin_precedence_output.txt` | 补 sourcemap 来源摘录、三平台结论与 `Parity Verified` 升级证据；display/token、precedence、plugin failure 的公共文本输出已进入 fixture 基线 | marketplace/install/update 与模板生态 |
+| Worktree / Session / Resume | 恢复主链路可用，但恢复细节仍待 hardening | `crates/clawin-config/tests/session_store.rs`、`crates/clawin-bootstrap/tests/resume_session.rs`、`crates/clawin-tools/tests/worktree.rs`、`crates/clawin-platform/tests/git_worktree.rs` | 补 transcript 真源、恢复失败路径与 worktree 生命周期证据 | 更多恢复语义与退出交互 |
+| Structured IO / Headless | `--print` 主链路可用，但对标证据还不完整 | `crates/clawin/tests/cli_smoke.rs`、`crates/clawin-bootstrap/src/print.rs` 内测试 | 补 stream-json / permission / resume 的 golden 与平台说明 | 更丰富 host / bridge 集成 |
+| Remote Control / Bridge | bridge 最小闭环已达成，但仍依赖 fake connector 验证 | `crates/clawin-integrations/tests/bridge.rs`、`crates/clawin-bootstrap/tests/remote_control.rs`、`crates/clawin-ui/tests/repl.rs` | 补 pointer recovery、busy/cancel/reconnect 的来源样本与 fixture | 真实 backend/auth、多会话 bridge |
 
 ## 子系统最小验收模板
 
@@ -41,6 +57,12 @@
 4. 有哪些失败路径
 5. 如何做对标验证
 6. 是否存在差异 ID
+
+Phase 8 审计补充规则:
+
+7. 当前实现是“V1 已足够的最小闭环”，还是“仅有样本实现”
+8. 若尚不能升为 `Parity Verified`，阻塞项是什么
+9. 哪些未实现能力属于 `M8` 阻塞，哪些明确留到 `M8` 之后
 
 ## Phase 3 二级验收注记
 
@@ -87,11 +109,11 @@
 | --- | --- | --- | --- | --- |
 | skills directory discovery / frontmatter parsing | `Parity Pending` | `clawin-integrations` | 从 `~/.clawin/skills/` 与 `<project_root>/.clawin/skills/` 递归发现 `SKILL.md`；frontmatter 至少解析 `name`、`description`、`tools`；非法 frontmatter 或空 markdown 进入解析错误列表但不阻断其他 skill 加载 | `DIFF-2026-001` |
 | skill override precedence / snapshot | `Parity Pending` | `clawin-integrations` | 发现顺序固定为 `project > user`；同名 skill 由项目级整份覆盖全局级；输出 `LoadedSkillsSnapshot`，保留 skill 元数据、原始 markdown、来源与错误列表 | `DIFF-2026-001` |
-| dynamic skill command export / `/skills` | `Parity Pending` | `clawin-commands` + `clawin-integrations` | skills 会导出动态 slash commands；`/skills` 输出显示名、来源与描述摘要，并在显示名与 token 不同的时候显式展示 normalized slash-command token；执行 `/{normalized_token}` 或 `/{plugin_id}:{normalized_token}` 时返回稳定文本/prompt scaffold，不接真实模型增强逻辑 | `DIFF-2026-001` |
+| dynamic skill command export / `/skills` | `Parity Pending` | `clawin-commands` + `clawin-integrations` | skills 会导出动态 slash commands；`/skills` 输出显示名、来源与描述摘要，并在显示名与 token 不同的时候显式展示 normalized slash-command token；执行 `/{normalized_token}` 或 `/{plugin_id}:{normalized_token}` 时返回稳定文本/prompt scaffold，不接真实模型增强逻辑；当前公开输出由 `skills_normalized_output.txt` 与 `skill_command_display_output.txt` 锁定 | `DIFF-2026-001` |
 | plugin manifest loading / status view | `Parity Pending` | `clawin-integrations` + `clawin-commands` | 从 `~/.clawin/plugins/` 与 `<project_root>/.clawin/plugins/` 递归发现 `plugin.json`；消费最小 manifest 字段并生成 runtime snapshot；`/plugin` 输出 plugin 来源、状态、贡献摘要与失败信息 | `DIFF-2026-001` |
 | plugin-contributed command loading | `Parity Pending` | `clawin-integrations` + `clawin-commands` | plugin commands、plugin skills 与 builtin commands 共用同一 registry；来源标记可区分 builtin / dynamic / plugin；重复 command 名冲突会稳定进入失败/忽略路径 | `DIFF-2026-001` |
 | plugin-contributed MCP merge | `Parity Pending` | `clawin-integrations` + `clawin-bootstrap` | plugin 声明的 MCP servers 以 `plugin:{plugin_id}:{server_name}` 命名空间并入现有 `McpManager`；不会引入新的独立 transport 层；`/mcp list` 可看到 plugin 贡献项 | `DIFF-2026-001` |
-| non-blocking plugin failure path | `Parity Pending` | `clawin-integrations` + `clawin-bootstrap` + `clawin-ui` | 单个 plugin manifest 非法、内容缺失或解析失败时，不阻断整体启动；该 plugin 进入 `Failed` 或 `Ignored` 状态并带稳定错误信息，REPL 仍可继续启动和列出结果 | `DIFF-2026-001` |
+| non-blocking plugin failure path | `Parity Pending` | `clawin-integrations` + `clawin-bootstrap` + `clawin-ui` | 单个 plugin manifest 非法、内容缺失或解析失败时，不阻断整体启动；该 plugin 进入 `Failed` 或 `Ignored` 状态并带稳定错误信息，REPL 仍可继续启动和列出结果；`/plugin` 的 ignored/failed 公共输出由 `plugin_precedence_output.txt` 锁定 | `DIFF-2026-001` |
 | bootstrap + engine + REPL orchestration | `Parity Pending` | `clawin-bootstrap` + `clawin-engine` + `clawin-ui` + `clawin-commands` | bootstrap 装配顺序固定为 config -> MCP -> skills -> plugins -> registry；engine 继续复用 slash command fast-path；REPL 只需显示动态 skill/plugin commands 已可用及稳定执行结果 | `DIFF-2026-001` |
 
 ## Phase 7A 二级验收注记

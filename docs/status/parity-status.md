@@ -2,33 +2,37 @@
 
 - 更新时间: 2026-04-09
 - 当前里程碑: `M7`
-- 当前执行阶段: `Phase 7 complete`
+- 当前执行阶段: `Phase 8 in progress`
 
 ## 总体状态
 
-文档与治理基线、Cargo workspace、最小 `clawin` 可执行骨架、`bootstrap/config` 首轮闭环、`commands/tools/engine` 的 `M4` 最小端到端会话闭环、`Phase 5` 的最小 `TUI / REPL` 交互闭环，以及 `Phase 6A + 6B` 的 MCP / skills / plugins 最小主链路闭环均已落地。仓库随后完成了 `Phase 7A: Worktree / Session / Resume`、`Phase 7B1: Structured IO / Headless` 与 `Phase 7B2: Remote Control / Bridge`：`clawin` 现已同时具备本地 JSONL session 持久化与恢复、git-backed session-owned worktree、显式 `--print` headless 结构化 IO，以及 `remote-control` / `/remote-control` 桥接当前会话的最小闭环。当前里程碑正式切到 `M7`，后续进入 `Phase 8` 的 parity hardening 与发布准备。
+文档与治理基线、Cargo workspace、`bootstrap/config`、`commands/tools/engine`、`TUI / REPL`、`MCP / skills / plugins`、`worktree / session / resume`、`structured IO / headless` 与 `remote control / bridge` 的最小主链路闭环均已落地，仓库当前具备 `M7` 所需的关键运行时能力。  
+但按照项目宪章、对标矩阵与测试规范重新对照 `docs/claude-code-sourcemap-main/restored-src/src/` 后，当前证据仍不足以把仓库正式切到 `M8 / Phase 8 complete`：一级子系统仍全部是 `Parity Pending`，三平台证据尚未覆盖全部公开行为，且仓库内尚无发布检查表。  
+
+本轮 sourcemap 复核的正式结论见 [sourcemap-audit.md](/Users/goya/Repo/claude/clawin/docs/status/sourcemap-audit.md)。
 
 ## 子系统状态
 
-| 子系统 | 当前状态 | 下一步 |
-| --- | --- | --- |
-| Bootstrap / Entrypoint | `Parity Pending` | 在现有 startup/config 装配之上补充 commands/tools 入口与更多行为 fixture |
-| Config / Settings / Persistence | `Parity Pending` | 在现有 schema/migration 闭环之上继续补 settings 合并语义与更多对标样本 |
-| Commands | `Parity Pending` | 在 `/help` 参考命令基础上继续补更多命令语义、golden fixture 和动态来源 |
-| Tools | `Parity Pending` | 在 `file_read` 参考工具基础上继续补更多工具、权限规则和 schema 样本 |
-| Conversation Engine | `Parity Pending` | 在已完成 turn loop/streaming/tool continuation/budget/compact 基线上继续补更多 query 语义和真实 provider 接口 |
-| TUI / REPL | `Parity Pending` | 在最小 REPL 基线上继续补 multi-line composer、history、scrollback 和更完整终端交互语义 |
-| MCP | `Parity Pending` | 已完成 stdio MCP 的 `/mcp`、resource tools、动态 tool 调用与 fake stdio server 验证；后续继续补更多 transport 与通知刷新语义 |
-| Skills / Plugins | `Parity Pending` | 已完成 skills 目录发现、plugin runtime 加载、动态 slash commands、plugin MCP 合并与 REPL/engine 装配；后续再补 marketplace/install/update 流水线 |
-| Worktree / Session / Resume | `Parity Pending` | 在当前 JSONL/session/worktree/resume 基线上继续补更完整的 transcript 恢复、跨路径持久化与退出 worktree 交互语义 |
-| Structured IO / Headless | `Parity Pending` | 已完成 `--print`、`text/json/stream-json`、stdin `stream-json` 协议、host-mediated permission request/response、interrupt 与 print-mode resume；后续继续补更多 golden fixture 与行为硬化 |
-| Remote Control / Bridge | `Parity Pending` | 已完成 `remote-control` / `rc` 子命令、REPL `/remote-control` / `/rc`、bridge pointer 恢复、transport reconnect 与 fake backend/transport 验证；后续继续补真实 backend/auth 与更完整多客户端协作语义 |
+| 子系统 | 当前状态 | 审计结论 | Phase 8 必补 |
+| --- | --- | --- | --- |
+| Bootstrap / Entrypoint | `Parity Pending` | V1 启动最小闭环已达成 | 为 fast-path、no-arg、print、remote-control 补齐来源样本、golden 与三平台启动证据 |
+| Config / Settings / Persistence | `Parity Pending` | schema、迁移与读取闭环可用，但仍属最小实现 | 补配置失败路径、settings 语义样本与路径平台说明 |
+| Commands | `Parity Pending` | 参考命令可用，但命令面远小于上游 | 固定 V1 命令边界并为纳入命令补齐 sourcemap 与 golden |
+| Tools | `Parity Pending` | 参考工具闭环可用，但仍是样本工具集 | 补当前工具的结果 fixture、失败路径与来源证据 |
+| Conversation Engine | `Parity Pending` | 最小 turn loop 已达成，不等于完整 query 对标 | 补事件序列证据、失败路径与 V1 边界说明 |
+| TUI / REPL | `Parity Pending` | 最小 REPL 闭环已达成，但 UI 语义仍是精简版 | 补 snapshot / 三平台终端证据与当前 UI 边界说明 |
+| MCP | `Parity Pending` | stdio MCP 最小闭环已达成 | 补 `/mcp`、resource tools、动态 tool 的来源样本与平台结论 |
+| Skills / Plugins | `Parity Pending` | 动态 skill/plugin runtime 已达成最小闭环 | 当前优先收口 display/token 分离、plugin precedence 与 `/skills`、`/plugin` 的公共输出证据 |
+| Worktree / Session / Resume | `Parity Pending` | 关键恢复链路可用，但恢复细节仍待 hardening | 补 transcript 真源、恢复失败路径与 worktree 生命周期证据 |
+| Structured IO / Headless | `Parity Pending` | `--print` 主链路已可用，但对标证据还不完整 | 补 stream-json / permission / resume 的 golden 与平台说明 |
+| Remote Control / Bridge | `Parity Pending` | bridge 最小闭环已达成，但仍依赖 fake connector 验证 | 补 pointer recovery、busy/cancel/reconnect 的来源样本与 fixture |
 
 ## 当前重点
 
-- 固化 `M7 / Phase 7 complete` 的运行时基线，确保 worktree/session/resume、structured IO/headless 与 remote-control/bridge 在三平台持续可验证
-- 在 `DIFF-2026-001` 基线下继续扩充 bridge golden fixture、same-repo pointer recovery、transport reconnect/failure 与 remote/local busy 样本
-- 进入 `Phase 8`，补齐 parity hardening、平台矩阵、golden fixture 收口与发布前检查表
+- 固化 `M7` 已实现的最小闭环，不再把“最小实现”直接表述为“已完成对标”
+- `Phase 8A` 当前优先批次先收口 `Skills / Plugins`，把 display/token、precedence 与 plugin failure 文本输出锁进测试与 fixture
+- 以 [sourcemap-audit.md](/Users/goya/Repo/claude/clawin/docs/status/sourcemap-audit.md) 为基线，逐子系统补齐 `Parity Verified` 所需证据
+- 新增发布检查表，并在 `status`、`roadmap`、`parity matrix` 与根入口文档之间收敛里程碑口径
 
 ## 当前差异
 

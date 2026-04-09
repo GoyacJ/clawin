@@ -655,7 +655,7 @@ fn render_plugin_listing(plugins: &LoadedPluginsSnapshot) -> String {
             plugin.skill_command_names().len(),
             plugin.mcp_server_names().len()
         );
-        if let Some(error) = plugin.errors().first() {
+        if let Some(error) = plugin.primary_error() {
             line.push_str(" error=");
             line.push_str(error);
         }

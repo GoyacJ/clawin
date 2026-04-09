@@ -2,17 +2,19 @@
 
 Clawin 是一个基于 Rust 重构的终端代理式编码产品，V1 目标是对标 Claude Code `v2.1.88` 的公开包行为，同时以 Rust 的工程化方式重建其核心架构、运行时和平台适配层。
 
-当前仓库已经完成治理基线、workspace 骨架、`bootstrap/config` 首轮闭环、`commands/tools/engine` 的 `M4` 最小端到端会话闭环，以及 `Phase 5` 的最小 `TUI / REPL` 交互闭环。所有工程决策、对标范围、差异处理和验收规则都以仓库内文档为准，不依赖口头说明。
+当前仓库已经完成从治理基线到 `Phase 7` 的最小主链路闭环，现处于 `Phase 8` 的 parity hardening 与里程碑复核阶段。所有工程决策、对标范围、差异处理和验收规则都以仓库内文档为准，不依赖口头说明。
 
 ## 当前阶段
 
-- 阶段: 已进入 `M5`，interactive no-arg 路径已升级为最小 REPL，下一步推进 MCP、更多 query 行为与更完整终端体验对标
+- 阶段: `M7 / Phase 8 in progress`
+- 当前结论: `Phase 7` 的最小闭环已落地，但仓库尚未被正式判定为 `M8 / Phase 8 complete`
+- 复核基线: [docs/status/sourcemap-audit.md](/Users/goya/Repo/claude/clawin/docs/status/sourcemap-audit.md) 与 [docs/status/parity-status.md](/Users/goya/Repo/claude/clawin/docs/status/parity-status.md)
 - 上游参考语料: [docs/claude-code-sourcemap-main/README.md](/Users/goya/Repo/claude/clawin/docs/claude-code-sourcemap-main/README.md)
 - 对标目标: Claude Code `2.1.88` 公开包行为
 - 产品身份: `clawin`
 - 配置命名: `~/.clawin`、`.clawin/`、`CLAWIN.md`
 - 当前差异基线: `DIFF-2026-001`
-- 当前阶段边界: `M4` 已完成 engine 最小端到端会话，`MCP` 保留在 `Phase 6`
+- 当前阶段边界: 当前重点是补齐 parity hardening、三平台证据、golden fixture 与发布门禁，而不是继续扩展新功能
 
 ## 阅读顺序
 
