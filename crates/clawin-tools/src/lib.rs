@@ -4,7 +4,7 @@
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use clawin_core::PermissionResolver;
@@ -777,10 +777,52 @@ fn resource_to_json(resource: McpResource) -> Value {
 
 fn resolve_tool_path(runtime: &SessionRuntime, file_path: &str) -> PathBuf {
     let path = PathBuf::from(file_path);
-    if path.is_absolute() {
+    let resolved = if path.is_absolute() {
         path
     } else {
         runtime.current_cwd().join(path)
+    };
+
+    normalize_tool_path(&resolved)
+}
+
+fn normalize_tool_path(path: &Path) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    let mut has_root = false;
+    let mut normal_depth = 0usize;
+
+    for component in path.components() {
+        match component {
+            Component::Prefix(value) => normalized.push(value.as_os_str()),
+            Component::RootDir => {
+                normalized.push(Path::new(std::path::MAIN_SEPARATOR_STR));
+                has_root = true;
+                normal_depth = 0;
+            }
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if normal_depth > 0 {
+                    normalized.pop();
+                    normal_depth -= 1;
+                } else if !has_root {
+                    normalized.push(component.as_os_str());
+                }
+            }
+            Component::Normal(value) => {
+                normalized.push(value);
+                normal_depth += 1;
+            }
+        }
+    }
+
+    if normalized.as_os_str().is_empty() {
+        if has_root {
+            PathBuf::from(std::path::MAIN_SEPARATOR_STR)
+        } else {
+            PathBuf::from(".")
+        }
+    } else {
+        normalized
     }
 }
 

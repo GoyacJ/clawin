@@ -68,6 +68,33 @@ fn rejects_paths_outside_project_root_in_non_interactive_mode() {
 }
 
 #[test]
+fn rejects_relative_parent_paths_outside_project_root_in_non_interactive_mode() {
+    let harness = ToolHarness::new();
+    let outside_file = harness.tempdir.path().join("outside.txt");
+    fs::write(&outside_file, "secret").expect("outside file should be written");
+
+    let execution = builtin_tool_registry()
+        .execute(
+            ToolCall::new(
+                "toolu_002b",
+                "file_read",
+                json!({
+                    "file_path": "../outside.txt"
+                }),
+            ),
+            &harness.runtime(false),
+        )
+        .expect("permission fallback should return a structured result");
+
+    assert_eq!(execution.permission_behavior, PermissionBehavior::Ask);
+    assert!(execution.result.is_error);
+    assert_eq!(
+        execution.result.content,
+        fixture_json("tests/fixtures/file_read_permission_denied.json")
+    );
+}
+
+#[test]
 fn rejects_invalid_input_schema() {
     let harness = ToolHarness::new();
     let error = builtin_tool_registry()
